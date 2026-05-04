@@ -2,6 +2,8 @@
 
 Self-hostable, self-custody crypto wallet UI for deploying on the [Akash Network](https://akash.network).
 
+If you hold ACT, want to sign your own transactions with your own wallet, or want to run the deploy UI against your own RPC and API endpoints, this is for you. If you just want the fastest path from "I have a Docker image" to "it's running" — use the managed [Akash Console](https://console.akash.network) instead. Both consoles point at the same network. See [docs/](./docs/index.md) for who Console Air is and isn't, and [AEP-84](https://github.com/akash-network/AEP/tree/main/spec/aep-84) for the full rationale behind the split.
+
 ## Requirements
 
 - **Node.js** >= 20
@@ -43,6 +45,15 @@ cp apps/deploy-web/env/.env.sample apps/deploy-web/env/.env.local
 ```
 
 Every variable in the sample is optional and documents its production default; uncomment only the ones you need to override.
+
+## Documentation
+
+For deeper guides:
+
+- [**Overview**](./docs/index.md) — who Console Air is and isn't for
+- [**Self-hosting guide**](./docs/self-hosting.md) — running locally, behind your own domain, on Akash itself
+- [**Migrating from Akash Console**](./docs/migrating-from-akash-console.md) — Export Local Data → Import Local Data
+- [**Self-custody guide**](./docs/self-custody.md) — wallets, custom RPC, certificate management
 
 ## Project Layout
 
