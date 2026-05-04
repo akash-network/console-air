@@ -1,4 +1,9 @@
-# Console Air
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="apps/deploy-web/public/images/console-air-logo-dark.svg">
+    <img alt="Akash Console Air" src="apps/deploy-web/public/images/console-air-logo-light.svg" width="420">
+  </picture>
+</p>
 
 Self-hostable, self-custody crypto wallet UI for deploying on the [Akash Network](https://akash.network).
 
