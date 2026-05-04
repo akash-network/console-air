@@ -26,16 +26,14 @@ For most self-custody users, this is enough. You don't need a server — your br
 
 ## Deploy behind your own domain
 
-If you want to share an instance with your team or run a public mirror, deploy it like any other Next.js app:
+If you want to share an instance with your team or run a public mirror, the natural place to host Console Air is **on Akash itself**. The deployable artifact is the `apps/deploy-web` workspace — build a container image around the production start command and write an SDL pointing at it:
 
 ```bash
 npm run build
 npm --workspace apps/deploy-web run start
 ```
 
-Front it with your reverse proxy of choice (Caddy, Traefik, nginx, Cloudflare Tunnel) and you're done. Vercel, Netlify, and similar platforms work too — Console Air is a stock Next.js project.
-
-You can also self-host Console Air on Akash itself. The deployable artifact is the `apps/deploy-web` workspace; build a container image around `npm run build` + `npm --workspace apps/deploy-web run start` and write an SDL pointing at it.
+If you'd rather run it on your own infrastructure, the same build runs behind any reverse proxy you already operate (Caddy, Traefik, nginx, Cloudflare Tunnel). Console Air is a stock Next.js app — it'll run anywhere Node.js runs — but Akash is the recommended host for a tool whose whole point is to use Akash.
 
 ## Configuration
 
