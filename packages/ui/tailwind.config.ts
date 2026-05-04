@@ -4,14 +4,11 @@ module.exports = function (app: string) {
   const config: Config = {
     darkMode: "selector",
     content: [
-      "./pages/**/*.{ts,tsx}",
-      "./components/**/*.{ts,tsx}",
-      "./hooks/**/*.{ts,tsx}",
-      "./stories/**/*.{ts,tsx}",
-      "./app/**/*.{ts,tsx}",
-      "./src/**/*.{ts,tsx}",
       `../../apps/${app}/src/**/*.{ts,tsx}`,
-      "../../packages/ui/**/*.{ts,tsx,html,stories.tsx}"
+      "../../packages/ui/components/**/*.{ts,tsx}",
+      "../../packages/ui/context/**/*.{ts,tsx}",
+      "../../packages/ui/hooks/**/*.{ts,tsx}",
+      "../../packages/ui/utils/**/*.{ts,tsx}"
     ],
     theme: {
       container: {

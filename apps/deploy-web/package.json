@@ -13,7 +13,7 @@
   "scripts": {
     "build": "npm run build-env-schemas && next build",
     "build-env-schemas": "tsc src/config/env-config.schema.ts --outDir . --skipLibCheck --target es2023 --moduleResolution node",
-    "dev": "next",
+    "dev": "NEXT_IGNORE_INCORRECT_LOCKFILE=1 next",
     "format": "prettier --write ./*.{ts,js,json} **/*.{ts,tsx,js,json}",
     "lint": "eslint .",
     "start": "next start",
@@ -89,7 +89,6 @@
     "next": "^14.2.35",
     "next-navigation-guard": "^0.2.0",
     "next-nprogress-bar": "^2.1.2",
-    "next-pwa": "^5.6.0",
     "next-qrcode": "^2.1.0",
     "next-seo": "^6.1.0",
     "next-themes": "^0.2.1",

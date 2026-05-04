@@ -3,23 +3,6 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
   enabled: process.env.ANALYZE === "true"
 });
 const { version } = require("./package.json");
-const isDev = process.env.NODE_ENV === "development";
-const defaultCache = require("next-pwa/cache");
-const withPWA = require("next-pwa")({
-  dest: "public",
-  disable: isDev,
-  runtimeCaching: [
-    {
-      urlPattern: ({ url }) => {
-        const isSameOrigin = self.origin === url.origin; // eslint-disable-line no-undef
-        return !isSameOrigin;
-      },
-      handler: "NetworkOnly",
-      options: { cacheName: "third-party-network-only" }
-    },
-    ...defaultCache
-  ]
-});
 const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
 
@@ -52,6 +35,24 @@ const nextConfig = {
   i18n: {
     locales: ["en-US"],
     defaultLocale: "en-US"
+  },
+  onDemandEntries: {
+    maxInactiveAge: 60 * 60 * 1000,
+    pagesBufferLength: 10
+  },
+  experimental: {
+    optimizePackageImports: [
+      "@interchain-ui/react",
+      "@nivo/core",
+      "@nivo/line",
+      "@nivo/pie",
+      "@nivo/tooltip",
+      "@radix-ui/react-icons",
+      "chain-registry",
+      "iconoir-react",
+      "react-icons",
+      "tss-react"
+    ]
   },
   webpack: (config, options) => {
     config.externals.push({
@@ -97,4 +98,4 @@ const nextConfig = {
   }
 };
 
-module.exports = withBundleAnalyzer(withPWA(nextConfig));
+module.exports = withBundleAnalyzer(nextConfig);
