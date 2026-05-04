@@ -13,7 +13,6 @@ This guide walks through each.
 Console Air uses [Cosmos Kit](https://cosmoskit.com/) to connect to wallets. Out of the box it supports:
 
 - Keplr (browser extension and mobile)
-- Leap
 - Cosmostation
 - MetaMask (via the Cosmos extension snap)
 
