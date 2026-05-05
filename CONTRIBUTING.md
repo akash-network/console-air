@@ -25,7 +25,7 @@ Installing an npm package must be done at the root with the workspace flag, e.g.
 npm i -w ./apps/deploy-web name-of-the-package@version
 ```
 
-The pre-commit hook automatically regenerates `package-lock.json` from scratch whenever a `package.json` is staged. This is needed because incremental `npm install` on macOS prunes Linux-only optional deps (rolldown wasm bindings, sharp libvips variants, etc.), which then makes `npm ci` fail in CI. Run `npm run deps:relock` to perform the regeneration manually.
+If CI fails with `Missing: <pkg> from lock file`, your install pruned a Linux-only optional dependency (typically a rolldown or sharp variant) that `npm ci` needs on the CI runner. Run `npm run deps:relock` to do a clean re-resolve and commit the resulting `package-lock.json`. Avoid running this preemptively — it produces a large diff that's harder to security-review.
 
 ### IV. Commit Messages
 
