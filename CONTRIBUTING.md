@@ -25,6 +25,8 @@ Installing an npm package must be done at the root with the workspace flag, e.g.
 npm i -w ./apps/deploy-web name-of-the-package@version
 ```
 
+The pre-commit hook automatically regenerates `package-lock.json` from scratch whenever a `package.json` is staged. This is needed because incremental `npm install` on macOS prunes Linux-only optional deps (rolldown wasm bindings, sharp libvips variants, etc.), which then makes `npm ci` fail in CI. Run `npm run deps:relock` to perform the regeneration manually.
+
 ### IV. Commit Messages
 
 Follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standard:

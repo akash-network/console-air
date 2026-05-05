@@ -10,6 +10,7 @@
     "build": "npm run build -w apps/deploy-web",
     "lint": "eslint .",
     "format": "prettier --write ./*.{js,json} **/*.{ts,tsx,js,json}",
+    "deps:relock": "rm -f package-lock.json && npm install --package-lock-only --ignore-scripts",
     "prepare": "husky || true"
   },
   "dependencies": {
