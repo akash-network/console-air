@@ -10,7 +10,6 @@ const commonAlias: Record<string, string> = {
 };
 
 export default defineConfig({
-  plugins: [react()],
   test: {
     outputFile: {
       junit: "junit.xml"
@@ -23,6 +22,7 @@ export default defineConfig({
     projects: [
       {
         extends: true,
+        plugins: [react()],
         test: {
           name: "unit",
           environment: "jsdom",

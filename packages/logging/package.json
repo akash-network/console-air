@@ -30,8 +30,8 @@
     "@types/http-errors": "^2.0.4",
     "@types/node": "^22.8.6",
     "pino-pretty": "^11.3.0",
-    "vitest": "4.0.18",
-    "vitest-mock-extended": "^3.1.0"
+    "vitest": "4.1.5",
+    "vitest-mock-extended": "^4.0.0"
   },
   "peerDependencies": {
     "@opentelemetry/api": "^1.9.0",
