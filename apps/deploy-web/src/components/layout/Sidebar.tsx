@@ -13,7 +13,6 @@ import {
   Discord,
   EvPlug,
   Github,
-  HeadsetHelp,
   Heart,
   Home,
   InfoCircle,
@@ -96,11 +95,21 @@ export const Sidebar: React.FunctionComponent<Props> = ({ isMobileOpen, handleDr
         icon: props => <Server {...props} />,
         url: UrlService.providers(),
         activeRoutes: [UrlService.providers()]
-      }
+      },
+      ...(wallet.isWalletConnected
+        ? [
+            {
+              title: "App Settings",
+              icon: props => <Settings {...props} />,
+              url: UrlService.settings(),
+              activeRoutes: [UrlService.settings()]
+            } as ISidebarRoute
+          ]
+        : [])
     ];
 
     return routes;
-  }, []);
+  }, [wallet.isWalletConnected]);
 
   const routeGroups: ISidebarGroupMenu[] = useMemo(
     () => [
@@ -210,24 +219,6 @@ export const Sidebar: React.FunctionComponent<Props> = ({ isMobileOpen, handleDr
               }
             ]
           },
-          {
-            title: "Help from Expert",
-            icon: props => <HeadsetHelp {...props} />,
-            url: "https://akash.network/gpus-on-demand/",
-            activeRoutes: [],
-            target: "_blank",
-            isNew: true
-          },
-          ...(wallet.isWalletConnected
-            ? [
-                {
-                  title: "App Settings",
-                  icon: props => <Settings {...props} />,
-                  url: UrlService.settings(),
-                  activeRoutes: [UrlService.settings()]
-                } as ISidebarRoute
-              ]
-            : []),
           {
             title: "More Info",
             icon: props => <MoreHorizCircle {...props} />,
