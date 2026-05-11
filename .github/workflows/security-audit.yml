@@ -1,0 +1,127 @@
+name: security-audit
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: security-audit-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Pin npm to match packageManager field
+        run: npm install --global npm@11.11.0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit (gate at high)
+        id: audit
+        run: |
+          set +e
+          npm audit --audit-level=high --json > audit.json
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Render markdown summary
+        if: always()
+        run: |
+          node .github/workflows/scripts/audit-summary.mjs audit.json | tee summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open or update tracking issue
+        if: steps.audit.outputs.exit_code != '0' && github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          MARKER: "<!-- security-audit-tracker -->"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require("fs");
+            const summary = fs.readFileSync("summary.md", "utf8");
+            const marker = process.env.MARKER;
+            const runUrl = process.env.RUN_URL;
+            const body = [
+              marker,
+              "",
+              summary,
+              "",
+              `_Last updated by [${context.workflow}](${runUrl}) on ${new Date().toISOString()}._`,
+              "_To stop receiving updates: close this issue once the advisory is resolved or accepted as a residual (the workflow will reopen on the next failing run if needed)._",
+            ].join("\n");
+
+            const { data: search } = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open in:body "${marker}"`,
+            });
+            const existing = search.items[0];
+
+            if (existing) {
+              core.info(`Updating existing tracker issue #${existing.number}`);
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              core.info("Creating new tracker issue");
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: "npm audit: high or critical vulnerability detected",
+                body,
+              });
+            }
+
+      - name: Close tracking issue when clean
+        if: steps.audit.outputs.exit_code == '0' && github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          MARKER: "<!-- security-audit-tracker -->"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const marker = process.env.MARKER;
+            const runUrl = process.env.RUN_URL;
+            const { data: search } = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open in:body "${marker}"`,
+            });
+            for (const it of search.items) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: it.number,
+                body: `✅ npm audit is clean. Closing automatically. ([run](${runUrl}))`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: it.number,
+                state: "closed",
+                state_reason: "completed",
+              });
+            }
+
+      - name: Fail PR on high or critical
+        if: steps.audit.outputs.exit_code != '0' && github.event_name == 'pull_request'
+        run: |
+          echo "::error::npm audit found high or critical vulnerabilities. See the run summary."
+          exit 1
