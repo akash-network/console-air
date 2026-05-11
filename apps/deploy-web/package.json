@@ -1,5 +1,5 @@
 {
-  "name": "@akashnetwork/console-web",
+  "name": "@akashnetwork/console-air",
   "version": "1.0.0",
   "private": true,
   "description": "Self-custody crypto wallet UI for deploying on the Akash Network.",
