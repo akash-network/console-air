@@ -66,6 +66,9 @@ const nextConfig = {
     pagesBufferLength: 10
   },
   experimental: {
+    // Required: @nivo/* dist is CJS but depends on ESM-only d3-* packages.
+    // Without "loose", Next 16's production build refuses the CJS→ESM imports.
+    esmExternals: "loose",
     optimizePackageImports: [
       "@interchain-ui/react",
       "@radix-ui/react-icons",
