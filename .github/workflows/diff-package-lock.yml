@@ -72,32 +72,59 @@ jobs:
               c.path === "package-lock.json"
             );
 
-            const body = [
+            const buildBody = (content) => [
               "## 🔄 Carefully review the package-lock.json diff",
               "Resolve the comment if everything is ok",
               "",
               "```diff",
-              diff || 'No changes',
+              content,
               "```"
             ].join("\n");
 
-            if (existing) {
-              console.log("Updating existing comment");
-              await github.rest.pulls.updateReviewComment({
+            const tryPost = async (content) => {
+              const body = buildBody(content);
+              if (existing) {
+                console.log("Updating existing comment");
+                await github.rest.pulls.updateReviewComment({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                console.log("Creating new comment");
+                await github.rest.pulls.createReviewComment({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  pull_number: prNumber,
+                  body,
+                  path: "package-lock.json",
+                  position: 1,
+                  commit_id: context.payload.pull_request.head.sha,
+                });
+              }
+            };
+
+            if (!diff && !existing) {
+              return;
+            }
+
+            try {
+              await tryPost(diff || "No changes");
+            } catch (err) {
+              const tooLarge = err?.status === 422 && /diff is too large/i.test(JSON.stringify(err?.response?.data || {}));
+              if (!tooLarge) throw err;
+
+              console.log("Diff too large for a review comment; falling back to a summary issue comment.");
+              const lines = (diff || "").split("\n").filter(Boolean);
+              const summary = [
+                `Lockfile change is too large to display inline (${lines.length} entries).`,
+                "Run `git diff ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -- package-lock.json` locally to review."
+              ].join("\n");
+              await github.rest.issues.createComment({
                 owner: repo.owner,
                 repo: repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else if (diff) {
-              console.log("Creating new comment");
-              await github.rest.pulls.createReviewComment({
-                owner: repo.owner,
-                repo: repo.repo,
-                pull_number: prNumber,
-                body,
-                path: "package-lock.json",
-                position: 1,
-                commit_id: context.payload.pull_request.head.sha,
+                issue_number: prNumber,
+                body: buildBody(summary),
               });
             }
