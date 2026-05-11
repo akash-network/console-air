@@ -22,7 +22,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@dotenvx/dotenvx": "^1.12.1",
-    "pino": "^9.5.0"
+    "@dotenvx/dotenvx": "1.12.1",
+    "pino": "9.5.0"
   }
 }

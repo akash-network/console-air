@@ -17,15 +17,15 @@
     "validate:types": "tsc --noEmit && echo"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.67.2"
+    "@tanstack/react-query": "5.67.2"
   },
   "devDependencies": {
     "@akashnetwork/dev-config": "*",
-    "eslint": "^8.57.0",
-    "eslint-config-next": "^14.2.3",
-    "eslint-plugin-simple-import-sort": "^12.1.0",
-    "prettier": "^3.3.0",
+    "eslint": "8.57.0",
+    "eslint-config-next": "15.5.18",
+    "eslint-plugin-simple-import-sort": "12.1.0",
+    "prettier": "3.3.0",
     "vitest": "4.1.5",
-    "typescript": "~5.8.2"
+    "typescript": "5.8.2"
   }
 }

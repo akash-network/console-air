@@ -20,6 +20,6 @@
   "dependencies": {
     "@akashnetwork/chain-sdk": "1.0.0-alpha.29",
     "@akashnetwork/net": "*",
-    "jotai": "^2.9.2"
+    "jotai": "2.9.2"
   }
 }

@@ -20,8 +20,8 @@ export function createWebsocketMock(): WebSocket {
     onmessage: null,
     onerror: null,
     onclose: null,
-    close: vi.fn(function close() {
-      this.readyState = WebSocket.CLOSED;
+    close: vi.fn(function close(this: WebSocket) {
+      (this as { readyState: number }).readyState = WebSocket.CLOSED;
       dispatchWsEvent(this, new Event("close"));
     })
   });
