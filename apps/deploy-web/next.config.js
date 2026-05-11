@@ -46,15 +46,15 @@ const nextConfig = {
     styledComponents: true
   },
   images: {
-    domains: ["raw.githubusercontent.com", "avatars.githubusercontent.com"]
+    remotePatterns: [
+      { protocol: "https", hostname: "raw.githubusercontent.com" },
+      { protocol: "https", hostname: "avatars.githubusercontent.com" }
+    ]
   },
   output: "standalone",
   typescript: {
     tsconfigPath: "./tsconfig.build.json",
     ignoreBuildErrors: true
-  },
-  eslint: {
-    ignoreDuringBuilds: true
   },
   transpilePackages,
   i18n: {
@@ -66,7 +66,6 @@ const nextConfig = {
     pagesBufferLength: 10
   },
   experimental: {
-    esmExternals: "loose",
     optimizePackageImports: [
       "@interchain-ui/react",
       "@radix-ui/react-icons",

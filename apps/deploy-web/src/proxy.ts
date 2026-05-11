@@ -3,9 +3,9 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 const { MAINTENANCE_MODE } = process.env;
-const logger = new LoggerService({ name: "middleware" });
+const logger = new LoggerService({ name: "proxy" });
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const maintenancePage = "/maintenance";
   const isMaintenanceMode = MAINTENANCE_MODE === "true";
   if (isMaintenanceMode && !request.nextUrl.pathname.startsWith(maintenancePage)) {
