@@ -9,11 +9,12 @@ import type { ChainContext, WalletModalProps } from "@cosmos-kit/core";
 import { wallets as metamask } from "@cosmos-kit/cosmos-extension-metamask";
 import { wallets as cosmostation } from "@cosmos-kit/cosmostation-extension";
 import { wallets as keplr } from "@cosmos-kit/keplr";
-import { ChainProvider, DefaultModal, useChain } from "@cosmos-kit/react";
+import { ChainProvider, useChain } from "@cosmos-kit/react";
 import { useAtom } from "jotai";
 import { useSnackbar } from "notistack";
 
 import { assetLists, chains } from "@src/chains";
+import { WalletModal } from "@src/components/wallet-modal/WalletModal";
 import networkStore from "@src/store/networkStore";
 import walletStore from "@src/store/walletStore";
 import { registry } from "@src/utils/customRegistry";
@@ -108,5 +109,5 @@ const ModalWrapper = (props: WalletModalProps) => {
     setIsWalletModalOpen(props.isOpen);
   }, [isWalletModalOpen, props.isOpen, isWalletConnected]);
 
-  return <DefaultModal {...props} isOpen={props.isOpen} setOpen={props.setOpen} />;
+  return <WalletModal isOpen={props.isOpen} setOpen={props.setOpen} walletRepo={props.walletRepo} />;
 };
