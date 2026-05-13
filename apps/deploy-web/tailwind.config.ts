@@ -1,3 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any
-declare const require: any;
-export default require("@akashnetwork/ui/tailwind")("deploy-web");
+import tailwindFactory from "@akashnetwork/ui/tailwind";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default tailwindFactory("deploy-web") as any;
