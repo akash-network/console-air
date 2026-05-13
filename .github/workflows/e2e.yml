@@ -14,6 +14,10 @@ concurrency:
 jobs:
   playwright:
     name: Playwright self-custody
+    # Skip on PRs from forks: repository secrets (TEST_WALLET_MNEMONIC) are not
+    # exposed to fork-triggered workflow runs, so the job can't run. Coverage
+    # still happens on push to main and via workflow_dispatch.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
