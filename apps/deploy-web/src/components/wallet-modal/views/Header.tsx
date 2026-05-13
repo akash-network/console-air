@@ -1,4 +1,5 @@
 "use client";
+import { DialogTitle } from "@akashnetwork/ui/components";
 import { cn } from "@akashnetwork/ui/utils";
 import { NavArrowLeft, Xmark } from "iconoir-react";
 
@@ -24,7 +25,7 @@ export function Header({ title, onClose, onReturn, className }: HeaderProps) {
           </button>
         )}
       </div>
-      <h2 className="text-foreground text-sm font-semibold tracking-tight">{title}</h2>
+      <DialogTitle className="text-foreground text-sm font-semibold tracking-tight">{title}</DialogTitle>
       <div className="w-9 text-right">
         <button
           type="button"
