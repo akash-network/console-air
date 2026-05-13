@@ -52,7 +52,22 @@ function WalletItem({ wallet, onClick, disabled }: { wallet: WalletViewModel; on
   }
 
   return (
-    <CustomTooltip title="Mobile wallet support requires a WalletConnect project ID. See the self-hosting docs.">
+    <CustomTooltip
+      title={
+        <>
+          Mobile wallet support requires a WalletConnect project ID. See the{" "}
+          <a
+            href="https://github.com/akash-network/console-air/blob/main/docs/self-hosting.md#mobile-wallet-support-optional"
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            self-hosting docs
+          </a>
+          .
+        </>
+      }
+    >
       <div className="w-full">{button}</div>
     </CustomTooltip>
   );
