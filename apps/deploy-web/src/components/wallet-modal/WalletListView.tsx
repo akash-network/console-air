@@ -1,10 +1,14 @@
 "use client";
 import { useCallback, useMemo } from "react";
+import { CustomTooltip } from "@akashnetwork/ui/components";
 import type { ChainWalletBase } from "@cosmos-kit/core";
 import { NavArrowRight } from "iconoir-react";
 
+import { browserEnvConfig } from "@src/config/browser-env.config";
 import { Header } from "./views/Header";
 import { WalletLogo } from "./views/WalletLogo";
+
+const isWalletConnectEnabled = Boolean(browserEnvConfig.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID);
 
 type WalletViewModel = {
   name: string;
@@ -25,13 +29,14 @@ function toViewModel(wallet: ChainWalletBase): WalletViewModel {
   };
 }
 
-function WalletItem({ wallet, onClick }: { wallet: WalletViewModel; onClick: () => void }) {
-  return (
+function WalletItem({ wallet, onClick, disabled }: { wallet: WalletViewModel; onClick: () => void; disabled?: boolean }) {
+  const button = (
     <button
       type="button"
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       data-testid={`wallet-item-${wallet.name}`}
-      className="bg-secondary hover:bg-muted flex w-full items-center gap-3 rounded-md border border-border px-3 py-2.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="bg-secondary hover:bg-muted flex w-full items-center gap-3 rounded-md border border-border px-3 py-2.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-secondary"
     >
       <WalletLogo src={wallet.logo} alt={wallet.prettyName} size="md" />
       <div className="min-w-0 flex-1">
@@ -40,6 +45,16 @@ function WalletItem({ wallet, onClick }: { wallet: WalletViewModel; onClick: () 
       </div>
       <NavArrowRight className="text-muted-foreground h-4 w-4" />
     </button>
+  );
+
+  if (!disabled) {
+    return button;
+  }
+
+  return (
+    <CustomTooltip title="Mobile wallet support requires a WalletConnect project ID. See the self-hosting docs.">
+      <div className="w-full">{button}</div>
+    </CustomTooltip>
   );
 }
 
@@ -89,7 +104,12 @@ function DynamicWalletList({ wallets, onClose, onWalletSelected }: { wallets: Ch
           <SectionLabel>Mobile</SectionLabel>
           <div className="flex flex-col gap-2">
             {mobile.map(w => (
-              <WalletItem key={w.name} wallet={w} onClick={() => onWalletClicked(w.originalWallet)} />
+              <WalletItem
+                key={w.name}
+                wallet={w}
+                onClick={() => onWalletClicked(w.originalWallet)}
+                disabled={!isWalletConnectEnabled}
+              />
             ))}
           </div>
         </section>

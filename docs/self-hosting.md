@@ -49,6 +49,23 @@ Every variable in the sample is optional and documents its production default. U
 
 You can also override RPC and API endpoints at runtime from inside the UI via **App Settings** → **Network** → **Custom Node** — see [Self-custody guide](./self-custody.md).
 
+### Mobile wallet support (optional)
+
+Browser-extension wallets (Keplr, Cosmostation, MetaMask Snap) work out of the box. Mobile wallets connect via WalletConnect, which requires a project ID issued by Reown Cloud — without one, the mobile wallet entries appear disabled in the connect modal.
+
+If you want mobile wallet support on your instance:
+
+1. Sign up free at [cloud.reown.com](https://cloud.reown.com) and create a project.
+2. Copy the project ID into your env file:
+
+   ```bash
+   NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=your-project-id
+   ```
+
+3. Rebuild and restart.
+
+Project IDs are public values, but they're rate-limited and metered per project, so each self-hosted instance should use its own.
+
 ## Updating
 
 ```bash
