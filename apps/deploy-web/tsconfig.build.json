@@ -1,7 +1,6 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "baseUrl": ".",
     "moduleResolution": "Bundler",
     "target": "es2018",
     "paths": {

@@ -1,7 +1,6 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "baseUrl": ".",
     "moduleResolution": "bundler",
     "strict": true,
     "jsx": "react-jsx",
