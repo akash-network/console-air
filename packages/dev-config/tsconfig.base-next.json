@@ -9,7 +9,7 @@
     "moduleResolution": "node",
     "noEmit": true,
     "strict": false,
-    "target": "es5",
+    "target": "es2018",
     "plugins": [{ "name": "next" }]
   },
   "extends": "./tsconfig.base.json"
