@@ -132,10 +132,8 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
           nodes: nodesWithStatuses,
           isBlockchainDown: nodeStatus.status === "inactive"
         });
-      }
-
-      // If the user has no settings or the selected node is inactive, use the fastest available active node
-      if (!selectedNodeInSettings || (selectedNodeInSettings && settings.selectedNode?.status === "inactive")) {
+      } else if (!selectedNodeInSettings || (selectedNodeInSettings && settings.selectedNode?.status === "inactive")) {
+        // If the user has no settings or the selected node is inactive, use the fastest available active node
         const randomNode = getFastestNode(nodesWithStatuses);
         // Use rpc proxy as a backup if there's no active nodes in the list
         defaultApiNode = randomNode?.api || netConfig.getBaseAPIUrl(selectedNetwork.id);
