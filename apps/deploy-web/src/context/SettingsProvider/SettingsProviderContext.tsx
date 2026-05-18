@@ -297,7 +297,21 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
 
       // Update the settings with callback to avoid stale state settings
       updateSettings(prevSettings => {
-        const selectedNode = prevSettings.selectedNode ? _nodes.find(node => node.id === prevSettings.selectedNode?.id) : undefined;
+        let selectedNode = prevSettings.selectedNode ? _nodes.find(node => node.id === prevSettings.selectedNode?.id) : undefined;
+        let apiEndpoint = prevSettings.apiEndpoint;
+        let rpcEndpoint = prevSettings.rpcEndpoint;
+
+        // When switching out of custom mode, the previous selectedNode is the custom node
+        // (not in the public list), so the lookup above misses. Pick the fastest active
+        // public node instead so the dropdown isn't left empty.
+        if (!_isCustomNode && !selectedNode) {
+          selectedNode = getFastestNode(_nodes);
+          if (selectedNode) {
+            apiEndpoint = selectedNode.api;
+            rpcEndpoint = selectedNode.rpc;
+          }
+        }
+
         let isBlockchainDown: boolean;
         if (_isCustomNode) {
           isBlockchainDown = _customNode?.status === "inactive";
@@ -307,6 +321,8 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
 
         return {
           ...prevSettings,
+          apiEndpoint,
+          rpcEndpoint,
           nodes: _nodes,
           selectedNode,
           customNode: _customNode,
