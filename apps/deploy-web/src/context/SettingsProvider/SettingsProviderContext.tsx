@@ -114,8 +114,8 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
         const customNodeUrl = new URL(settings.apiEndpoint);
 
         const customNode: BlockchainNode = {
-          api: "",
-          rpc: "",
+          api: settings.apiEndpoint,
+          rpc: settings.rpcEndpoint,
           status: nodeStatus.status,
           latency: nodeStatus.latency,
           nodeInfo: nodeStatus.nodeInfo,
@@ -125,9 +125,9 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
 
         updateSettings({
           ...settings,
-          apiEndpoint: defaultApiNode,
-          rpcEndpoint: defaultRpcNode,
-          selectedNode: selectedNode as BlockchainNode,
+          apiEndpoint: settings.apiEndpoint,
+          rpcEndpoint: settings.rpcEndpoint,
+          selectedNode: customNode,
           customNode,
           nodes: nodesWithStatuses,
           isBlockchainDown: nodeStatus.status === "inactive"
