@@ -311,7 +311,7 @@ export function Popup(props: React.PropsWithChildren<PopupProps>) {
     <Dialog key="Dialog" {...dialogProps} onOpenChange={handleOnClose}>
       <ErrorBoundary FallbackComponent={ErrorFallback}>
         <DialogContent
-          className={cn("z-[999] m-0 p-6", {
+          className={cn("m-0 p-6", {
             ["sm:max-w-[400px]"]: props.maxWidth === "xs",
             ["sm:max-w-[600px]"]: props.maxWidth === "sm",
             ["sm:max-w-[750px]"]: props.maxWidth === "md",
