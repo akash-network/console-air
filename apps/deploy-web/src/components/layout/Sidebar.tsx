@@ -341,7 +341,8 @@ export const Sidebar: React.FunctionComponent<Props> = ({ isMobileOpen, handleDr
         onClose={handleDrawerToggle}
         className="block p-4 md:hidden"
         ModalProps={{
-          keepMounted: true // Better open performance on mobile.
+          keepMounted: true, // Better open performance on mobile.
+          disableEnforceFocus: true // Let nested Radix dialogs (e.g. wallet modal) own focus without recursive focus-trap fights.
         }}
         sx={{
           display: { xs: "block", sm: "block", md: "none" },
