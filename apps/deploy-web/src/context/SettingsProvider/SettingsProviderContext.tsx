@@ -1,14 +1,14 @@
 "use client";
 import React, { useCallback, useEffect, useState } from "react";
-import { createFetchAdapter } from "@akashnetwork/http-sdk";
 import { netConfig } from "@akashnetwork/net";
 
 import { useLocalStorage } from "@src/hooks/useLocalStorage";
 import { usePreviousRoute } from "@src/hooks/usePreviousRoute";
 import type { FCWithChildren } from "@src/types/component";
-import type { AbciInfo, NodeStatus } from "@src/types/node";
+import type { NodeStatus } from "@src/types/node";
 import { migrateLocalStorage } from "@src/utils/localStorage";
 import { useRootContainer } from "../ServicesProvider/RootContainerProvider";
+import { loadNodeStatus, loadProxiedNodeStatus } from "./loadNodeStatus";
 
 export type BlockchainNode = {
   api: string;
@@ -53,12 +53,6 @@ const defaultSettings: Settings = {
   isBlockchainDown: false
 };
 
-const fetchAdapter = createFetchAdapter({
-  circuitBreaker: {
-    halfOpenAfter: 5 * 1000
-  }
-});
-
 export const SettingsProvider: FCWithChildren = ({ children }) => {
   const { externalApiHttpClient, queryClient, networkStore } = useRootContainer();
   const [settings, setSettings] = useState<Settings>(defaultSettings);
@@ -85,12 +79,15 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
       migrateLocalStorage();
 
       const settingsStr = getLocalStorageItem("settings");
-      const settings = { ...defaultSettings, ...JSON.parse(settingsStr || "{}") } as Settings;
+      // Force isBlockchainDown to false on read so stale persisted values from older releases
+      // (and from any false-positive write that may still be in localStorage) don't show the
+      // "Blockchain unavailable" banner before the live check finishes.
+      const settings = { ...defaultSettings, ...JSON.parse(settingsStr || "{}"), isBlockchainDown: false } as Settings;
 
       const { data: nodes } = await externalApiHttpClient.get<Array<{ id: string; api: string; rpc: string }>>(selectedNetwork.nodesUrl);
       const nodesWithStatuses: BlockchainNode[] = await Promise.all(
         nodes.map(async node => {
-          const nodeStatus = await loadNodeStatus(node.rpc);
+          const nodeStatus = await loadProxiedNodeStatus(selectedNetwork.id, externalApiHttpClient);
 
           return {
             ...node,
@@ -110,7 +107,7 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
 
       // If the user has a custom node set, use it no matter the status
       if (settings.isCustomNode) {
-        const nodeStatus = await loadNodeStatus(settings.rpcEndpoint);
+        const nodeStatus = await loadNodeStatus(settings.rpcEndpoint, externalApiHttpClient);
         const customNodeUrl = new URL(settings.apiEndpoint);
 
         const customNode: BlockchainNode = {
@@ -148,7 +145,7 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
           id: new URL(defaultApiNode || defaultRpcNode).hostname
         };
         if ((selectedNode as BlockchainNode).nodeInfo === null) {
-          Object.assign(selectedNode, await loadNodeStatus(selectedNode.api));
+          Object.assign(selectedNode, await loadProxiedNodeStatus(selectedNetwork.id, externalApiHttpClient));
         }
         updateSettings({
           ...settings,
@@ -181,46 +178,6 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
   }, [isLoadingNetworks]);
 
   /**
-   * Load the node status from status rpc endpoint
-   * @param {string} rpcUrl
-   * @returns
-   */
-  const loadNodeStatus = async (rpcUrl: string) => {
-    const start = performance.now();
-    let status: "active" | "inactive" = "inactive";
-    let nodeStatus: NodeStatus | null = null;
-    let nodeAppVersion: string | undefined;
-
-    try {
-      const [statusResponse, abciInfoResponse] = await Promise.all([
-        externalApiHttpClient.get<{ result: NodeStatus }>(`${rpcUrl}/status`, {
-          timeout: 5000,
-          adapter: fetchAdapter
-        }),
-        externalApiHttpClient.get<{ result: AbciInfo }>(`${rpcUrl}/abci_info`, {
-          timeout: 5000,
-          adapter: fetchAdapter
-        })
-      ]);
-      nodeStatus = statusResponse.data.result;
-      nodeAppVersion = abciInfoResponse.data.result.response.version;
-      status = "active";
-    } catch (error) {
-      status = "inactive";
-    }
-
-    const end = performance.now();
-    const latency = end - start;
-
-    return {
-      latency,
-      status,
-      nodeInfo: nodeStatus,
-      appVersion: nodeAppVersion
-    };
-  };
-
-  /**
    * Get the fastest node from the list based on latency
    */
   const getFastestNode = (nodes: BlockchainNode[]) => {
@@ -233,7 +190,10 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
     setSettings(prevSettings => {
       const newSettings = typeof value === "function" ? value(prevSettings) : value;
       clearQueries(prevSettings, newSettings);
-      setLocalStorageItem("settings", JSON.stringify(newSettings));
+      // isBlockchainDown is derived from live health checks — never persist it, otherwise a
+      // transient false-positive would survive a reload and show the banner until the next refresh.
+      const { isBlockchainDown: _isBlockchainDown, ...persistedSettings } = newSettings;
+      setLocalStorageItem("settings", JSON.stringify(persistedSettings));
 
       return newSettings;
     });
@@ -265,7 +225,7 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
       const _rpcEndpoint = settingsOverride ? settingsOverride.rpcEndpoint : rpcEndpoint;
 
       if (_isCustomNode) {
-        const nodeStatus = await loadNodeStatus(_rpcEndpoint);
+        const nodeStatus = await loadNodeStatus(_rpcEndpoint, externalApiHttpClient);
         const customNodeUrl = new URL(_apiEndpoint);
 
         _customNode = {
@@ -280,7 +240,7 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
       } else {
         _nodes = await Promise.all(
           _nodes.map(async node => {
-            const nodeStatus = await loadNodeStatus(node.rpc);
+            const nodeStatus = await loadProxiedNodeStatus(selectedNetwork.id, externalApiHttpClient);
 
             return {
               ...node,
@@ -331,7 +291,7 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
         };
       });
     },
-    [isCustomNode, isRefreshingNodeStatus, customNode, setLocalStorageItem, apiEndpoint, nodes, setSettings]
+    [isCustomNode, isRefreshingNodeStatus, customNode, setLocalStorageItem, apiEndpoint, nodes, setSettings, selectedNetwork.id]
   );
 
   return (

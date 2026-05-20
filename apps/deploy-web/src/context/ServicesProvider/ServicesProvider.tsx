@@ -1,6 +1,7 @@
 import React, { useContext, useMemo } from "react";
 import type { NetworkId } from "@akashnetwork/chain-sdk";
 import { AuthzHttpService, BmeHttpService, CertificatesService } from "@akashnetwork/http-sdk";
+import { ConstantBackoff, handleAll, retry } from "cockatiel";
 
 import { UACT_DENOM, UAKT_DENOM, USDC_IBC_DENOMS } from "@src/config/denom.config";
 import { services as rootContainer } from "@src/services/app-di-container/browser-di-container";
@@ -35,6 +36,11 @@ export function useServices() {
 }
 
 const neverResolvedPromise = new Promise<never>(() => {});
+
+// Require 2 consecutive ping failures before flipping isBlockchainDown — a single transient
+// probe failure shouldn't put the console into read-only mode. In cockatiel, `maxAttempts`
+// counts retries after the initial call, so `1` yields exactly 2 total attempts.
+const chainPingRetryPolicy = retry(handleAll, { maxAttempts: 1, backoff: new ConstantBackoff(1000) });
 function createAppContainer<T extends Factories>(settingsState: SettingsContextType, services: Partial<T> | undefined) {
   const di = createChildContainer(rootContainer, {
     authzHttpService: () => new AuthzHttpService(di.chainApiHttpClient),
@@ -59,8 +65,8 @@ function createAppContainer<T extends Factories>(settingsState: SettingsContextT
             if (isBlockchainDown) return;
 
             // ensure blockchain is really unavailable and it's not an issue with some endpoint
-            inflightPingRequest ??= chainApiHttpClient
-              .get("/cosmos/base/tendermint/v1beta1/node_info", { adapter: "fetch", timeout: 5000 })
+            inflightPingRequest ??= chainPingRetryPolicy
+              .execute(() => chainApiHttpClient.get("/cosmos/base/tendermint/v1beta1/node_info", { adapter: "fetch", timeout: 5000 }))
               .then(() => ({ isBlockchainDown: false }))
               .catch(() => {
                 if (isBlockchainDown) return { isBlockchainDown: true };
