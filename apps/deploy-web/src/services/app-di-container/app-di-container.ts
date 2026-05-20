@@ -47,14 +47,13 @@ export const createAppRootContainer = (config: ServicesConfig) => {
         });
     },
     template: () => {
-      const httpClient = container.createAxios({
-        baseURL: container.publicConfig.NEXT_PUBLIC_BASE_TEMPLATES_URL
-      });
-      if (config.runtimeEnv === "browser") {
-        // Need to remove these extra headers to avoid CORS preflight requests
-        delete httpClient.defaults.headers["Content-Type"];
-        delete httpClient.defaults.headers.common.Accept;
-      }
+      // In the browser we route templates through the Next /api/proxy/templates route so the
+      // request stays same-origin. Without this, users on certain regional Cloudflare POPs see
+      // the OPTIONS preflight to akash-templates.pages.dev fail ("CORS Missing Allow Header"),
+      // which leaves the templates dropdown empty. The server-side path keeps hitting the
+      // upstream directly (no proxy hop) since CORS doesn't apply to server-side fetches.
+      const baseURL = config.runtimeEnv === "browser" ? "/api/proxy/templates" : container.publicConfig.NEXT_PUBLIC_BASE_TEMPLATES_URL;
+      const httpClient = container.createAxios({ baseURL });
       return new TemplateHttpService(httpClient);
     },
     usage: () => container.applyAxiosInterceptors(new UsageHttpService(apiConfig)),
