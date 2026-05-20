@@ -1,6 +1,5 @@
 "use client";
 import React, { useCallback, useEffect, useState } from "react";
-import { netConfig } from "@akashnetwork/net";
 
 import { useLocalStorage } from "@src/hooks/useLocalStorage";
 import { usePreviousRoute } from "@src/hooks/usePreviousRoute";
@@ -132,9 +131,11 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
       } else if (!selectedNodeInSettings || (selectedNodeInSettings && settings.selectedNode?.status === "inactive")) {
         // If the user has no settings or the selected node is inactive, use the fastest available active node
         const randomNode = getFastestNode(nodesWithStatuses);
-        // Use rpc proxy as a backup if there's no active nodes in the list
-        defaultApiNode = randomNode?.api || netConfig.getBaseAPIUrl(selectedNetwork.id);
-        defaultRpcNode = randomNode?.rpc || netConfig.getBaseRpcUrl(selectedNetwork.id);
+        // Fallback: even when no node responded, point at the same-origin proxy. We do not
+        // want to suddenly send the browser to the upstream chain host — that would re-expose
+        // CORS / firewall issues this PR is meant to bypass.
+        defaultApiNode = randomNode?.api || `/api/proxy/akash-rest/${selectedNetwork.id}`;
+        defaultRpcNode = randomNode?.rpc || `/api/proxy/akash-rpc/${selectedNetwork.id}`;
         selectedNode = randomNode || {
           api: defaultApiNode,
           rpc: defaultRpcNode,
@@ -142,7 +143,7 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
           latency: 0,
           nodeInfo: null,
           appVersion: undefined,
-          id: new URL(defaultApiNode || defaultRpcNode).hostname
+          id: nodesWithStatuses[0]?.id ?? selectedNetwork.id
         };
         if ((selectedNode as BlockchainNode).nodeInfo === null) {
           Object.assign(selectedNode, await loadProxiedNodeStatus(selectedNetwork.id, externalApiHttpClient));
@@ -156,9 +157,13 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
           isBlockchainDown: (selectedNode as BlockchainNode).status === "inactive"
         });
       } else {
-        defaultApiNode = settings.apiEndpoint;
-        defaultRpcNode = settings.rpcEndpoint;
-        selectedNode = settings.selectedNode;
+        // The previously-selected node still exists in the fresh list. Use its current
+        // api/rpc (same-origin proxy paths) instead of the persisted settings, which may
+        // hold pre-PR upstream URLs from before the proxy switch. This silently migrates
+        // existing users on next load.
+        defaultApiNode = (selectedNodeInSettings as BlockchainNode).api;
+        defaultRpcNode = (selectedNodeInSettings as BlockchainNode).rpc;
+        selectedNode = nodesWithStatuses.find(n => n.id === selectedNodeInSettings?.id) ?? settings.selectedNode;
         updateSettings({
           ...settings,
           apiEndpoint: defaultApiNode,

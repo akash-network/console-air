@@ -1,15 +1,7 @@
-import { netConfig } from "@akashnetwork/net";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getChainRpcUrl, isSupportedChainNetwork } from "@src/lib/nextjs/chainEndpoints/chainEndpoints";
 import type { AbciInfo, NodeStatus } from "@src/types/node";
-
-const SUPPORTED_NETWORKS = new Set(["mainnet", "sandbox"]);
-
-// Same source of truth as /api/blockchain-config — keep these in sync if mainnet ever switches RPC.
-function getRpcUrlFor(network: string): string {
-  if (network === "mainnet") return "https://rpc.akt.dev/rpc";
-  return netConfig.getBaseRpcUrl(network);
-}
 
 export type NodeStatusApiResponse =
   | { status: "active"; nodeInfo: NodeStatus; appVersion: string | undefined }
@@ -20,12 +12,12 @@ const UPSTREAM_TIMEOUT_MS = 5000;
 export async function nodeStatusHandler(req: NextApiRequest, res: NextApiResponse<NodeStatusApiResponse | { error: string }>): Promise<void> {
   const network = String(req.query.network || "");
 
-  if (!SUPPORTED_NETWORKS.has(network)) {
+  if (!isSupportedChainNetwork(network)) {
     res.status(422).json({ error: `Invalid network: ${network}` });
     return;
   }
 
-  const rpcUrl = getRpcUrlFor(network);
+  const rpcUrl = getChainRpcUrl(network);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
 
