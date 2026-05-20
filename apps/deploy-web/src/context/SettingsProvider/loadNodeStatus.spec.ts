@@ -1,5 +1,5 @@
 import type { AxiosInstance } from "axios";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mock } from "vitest-mock-extended";
 
 import { loadNodeStatus, loadProxiedNodeStatus } from "./loadNodeStatus";
@@ -16,14 +16,13 @@ const okProxyResponse = {
   }
 };
 
-function makeClient() {
-  const client = mock<AxiosInstance>();
-  return client;
-}
-
 describe(loadNodeStatus.name, () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("returns active when both /status and /abci_info succeed on first try", async () => {
-    const client = makeClient();
+    const { client } = setup();
     client.get.mockResolvedValueOnce(okStatus as never);
     client.get.mockResolvedValueOnce(okAbci as never);
 
@@ -38,7 +37,7 @@ describe(loadNodeStatus.name, () => {
   });
 
   it("retries once and returns active when the first attempt fails transiently", async () => {
-    const client = makeClient();
+    const { client } = setup();
     // First attempt: /status rejects → whole Promise.all rejects → cockatiel retries.
     client.get.mockRejectedValueOnce(new Error("transient"));
     // The other parallel call also resolves (Promise.all rejects fast on first reject either way).
@@ -56,7 +55,7 @@ describe(loadNodeStatus.name, () => {
   });
 
   it("returns inactive only after both attempts fail (2 consecutive failures)", async () => {
-    const client = makeClient();
+    const { client } = setup();
     client.get.mockRejectedValue(new Error("down"));
 
     const result = await loadNodeStatus(RPC_URL, client);
@@ -69,8 +68,7 @@ describe(loadNodeStatus.name, () => {
   });
 
   it("does not flip to inactive when only the first attempt times out", async () => {
-    vi.useFakeTimers();
-    const client = makeClient();
+    const { client } = setup({ useFakeTimers: true });
     // First attempt rejects, retry succeeds. Fast-forward the 1s backoff so the test doesn't hang.
     client.get.mockRejectedValueOnce(new Error("timeout"));
     client.get.mockResolvedValueOnce(okAbci as never);
@@ -82,13 +80,20 @@ describe(loadNodeStatus.name, () => {
     const result = await promise;
 
     expect(result.status).toBe("active");
-    vi.useRealTimers();
   });
+
+  function setup(input?: { useFakeTimers?: boolean }) {
+    if (input?.useFakeTimers) {
+      vi.useFakeTimers();
+    }
+    const client = mock<AxiosInstance>();
+    return { client };
+  }
 });
 
 describe(loadProxiedNodeStatus.name, () => {
   it("hits /api/node-status?network=<id> and returns active on a healthy proxy response", async () => {
-    const client = makeClient();
+    const { client } = setup();
     client.get.mockResolvedValueOnce(okProxyResponse as never);
 
     const result = await loadProxiedNodeStatus("mainnet", client);
@@ -101,7 +106,7 @@ describe(loadProxiedNodeStatus.name, () => {
   });
 
   it("URL-encodes the network id", async () => {
-    const client = makeClient();
+    const { client } = setup();
     client.get.mockResolvedValueOnce(okProxyResponse as never);
 
     await loadProxiedNodeStatus("foo bar", client);
@@ -110,7 +115,7 @@ describe(loadProxiedNodeStatus.name, () => {
   });
 
   it("retries once on a 5xx (proxy upstream failure) and returns active when the retry succeeds", async () => {
-    const client = makeClient();
+    const { client } = setup();
     client.get.mockRejectedValueOnce(Object.assign(new Error("Bad Gateway"), { response: { status: 502 } }));
     client.get.mockResolvedValueOnce(okProxyResponse as never);
 
@@ -121,7 +126,7 @@ describe(loadProxiedNodeStatus.name, () => {
   });
 
   it("returns inactive only after 2 consecutive failures", async () => {
-    const client = makeClient();
+    const { client } = setup();
     client.get.mockRejectedValue(Object.assign(new Error("Bad Gateway"), { response: { status: 502 } }));
 
     const result = await loadProxiedNodeStatus("mainnet", client);
@@ -132,7 +137,7 @@ describe(loadProxiedNodeStatus.name, () => {
   });
 
   it("treats a 200 with status='inactive' body as a failure (and retries)", async () => {
-    const client = makeClient();
+    const { client } = setup();
     client.get.mockResolvedValueOnce({ data: { status: "inactive", nodeInfo: null } } as never);
     client.get.mockResolvedValueOnce(okProxyResponse as never);
 
@@ -141,4 +146,9 @@ describe(loadProxiedNodeStatus.name, () => {
     expect(result.status).toBe("active");
     expect(client.get).toHaveBeenCalledTimes(2);
   });
+
+  function setup() {
+    const client = mock<AxiosInstance>();
+    return { client };
+  }
 });
