@@ -52,6 +52,18 @@ const defaultSettings: Settings = {
   isBlockchainDown: false
 };
 
+// CosmJS's Comet38Client.connect picks WebsocketClient unless the endpoint starts with
+// http:// or https:// — and WebsocketClient won't survive going through Next's pages router
+// (no WS upgrade). We absolute-ize relative same-origin paths against window.location so
+// CosmJS stays on the HTTP path. Full upstream URLs (custom-node entries, legacy persisted
+// settings) are passed through untouched. SSR safety: relative paths are returned as-is when
+// `window` isn't defined — SettingsProvider is client-only, but the helper is defensive.
+function toAbsoluteEndpoint(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url;
+  if (typeof window === "undefined" || !url.startsWith("/")) return url;
+  return window.location.origin + url;
+}
+
 export const SettingsProvider: FCWithChildren = ({ children }) => {
   const { externalApiHttpClient, queryClient, networkStore } = useRootContainer();
   const [settings, setSettings] = useState<Settings>(defaultSettings);
@@ -83,7 +95,8 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
       // "Blockchain unavailable" banner before the live check finishes.
       const settings = { ...defaultSettings, ...JSON.parse(settingsStr || "{}"), isBlockchainDown: false } as Settings;
 
-      const { data: nodes } = await externalApiHttpClient.get<Array<{ id: string; api: string; rpc: string }>>(selectedNetwork.nodesUrl);
+      const { data: rawNodes } = await externalApiHttpClient.get<Array<{ id: string; api: string; rpc: string }>>(selectedNetwork.nodesUrl);
+      const nodes = rawNodes.map(n => ({ ...n, api: toAbsoluteEndpoint(n.api), rpc: toAbsoluteEndpoint(n.rpc) }));
       const nodesWithStatuses: BlockchainNode[] = await Promise.all(
         nodes.map(async node => {
           const nodeStatus = await loadProxiedNodeStatus(selectedNetwork.id, externalApiHttpClient);
@@ -134,8 +147,8 @@ export const SettingsProvider: FCWithChildren = ({ children }) => {
         // Fallback: even when no node responded, point at the same-origin proxy. We do not
         // want to suddenly send the browser to the upstream chain host — that would re-expose
         // CORS / firewall issues this PR is meant to bypass.
-        defaultApiNode = randomNode?.api || `/api/proxy/akash-rest/${selectedNetwork.id}`;
-        defaultRpcNode = randomNode?.rpc || `/api/proxy/akash-rpc/${selectedNetwork.id}`;
+        defaultApiNode = randomNode?.api || toAbsoluteEndpoint(`/api/proxy/akash-rest/${selectedNetwork.id}`);
+        defaultRpcNode = randomNode?.rpc || toAbsoluteEndpoint(`/api/proxy/akash-rpc/${selectedNetwork.id}`);
         selectedNode = randomNode || {
           api: defaultApiNode,
           rpc: defaultRpcNode,
