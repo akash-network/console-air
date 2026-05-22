@@ -69,7 +69,7 @@ export const BidRow: React.FunctionComponent<Props> = ({
     enabled: false,
     retry: false
   });
-  const gpuModels = bid.resourcesOffer.flatMap(x => getGpusFromAttributes(x.resources.gpu.attributes));
+  const gpuModels = bid.resourcesOffer?.flatMap(x => getGpusFromAttributes(x.resources.gpu.attributes)) ?? [];
 
   useEffect(() => {
     if (provider) {

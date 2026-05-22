@@ -74,7 +74,11 @@ export async function NewDeploymentData(
     let finalDseq: string = dseq || "";
     if (!finalDseq) {
       const response = await chainApiHttpClient.get("/cosmos/base/tendermint/v1beta1/blocks/latest");
-      finalDseq = response.data.block.header.height;
+      const height = response?.data?.block?.header?.height;
+      if (height === undefined || height === null) {
+        throw new CustomValidationError("Unable to fetch the latest block height from the chain. Please retry or switch RPC node in Settings.");
+      }
+      finalDseq = String(height);
     }
 
     return {

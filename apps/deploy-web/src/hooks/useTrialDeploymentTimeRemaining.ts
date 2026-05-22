@@ -1,7 +1,7 @@
 import * as React from "react";
 import { formatDistanceToNow } from "date-fns";
 
-import { useBlock } from "@src/queries/useBlocksQuery";
+import { getBlockHeight, useBlock } from "@src/queries/useBlocksQuery";
 
 export interface TimeRemainingResult {
   timeLeft: Date | null;
@@ -73,11 +73,11 @@ export function useTrialDeploymentTimeRemaining({
   });
 
   const { timeLeft, isExpired } = React.useMemo(() => {
-    if (!latestBlock || !createdHeight || !trialDurationHours) {
+    const currentHeight = getBlockHeight(latestBlock);
+    if (currentHeight === null || !createdHeight || !trialDurationHours) {
       return { timeLeft: null, isExpired: false };
     }
 
-    const currentHeight = latestBlock.block.header.height;
     const result = calculateTrialTimeRemaining(createdHeight, currentHeight, trialDurationHours, averageBlockTime);
     return { timeLeft: result.timeLeft, isExpired: result.isExpired };
   }, [createdHeight, latestBlock, trialDurationHours, averageBlockTime]);

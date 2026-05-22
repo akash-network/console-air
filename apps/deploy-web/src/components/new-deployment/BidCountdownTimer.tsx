@@ -5,7 +5,7 @@ import { cn } from "@akashnetwork/ui/utils";
 import { differenceInSeconds } from "date-fns";
 import { InfoCircle } from "iconoir-react";
 
-import { useBlock } from "@src/queries/useBlocksQuery";
+import { getBlockTime, useBlock } from "@src/queries/useBlocksQuery";
 
 type Props = {
   height: string | null;
@@ -23,7 +23,7 @@ export const BidCountdownTimer: React.FunctionComponent<Props> = ({ height }) =>
     getBlock();
   }, []);
   useEffect(() => {
-    const date = block ? new Date(block.block.header.time) : new Date(0);
+    const date = getBlockTime(block) ?? new Date(0);
     const now = new Date();
     // add 20 seconds for the delay between deployment creation and bid creation
     const diff = Math.max(0, time - differenceInSeconds(now, date) + 20);

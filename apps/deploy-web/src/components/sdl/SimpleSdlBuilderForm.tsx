@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Alert, Button, Form, Snackbar, Spinner } from "@akashnetwork/ui/components";
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import { NavArrowRight } from "iconoir-react";
 import { useAtom } from "jotai";
 import Link from "next/link";
@@ -103,9 +104,20 @@ export const SimpleSDLBuilderForm: React.FunctionComponent = () => {
       setServiceCollapsed(services.map((x, i) => i));
       setTemplateMetadata(template);
     } catch (error) {
-      enqueueSnackbar(<Snackbar title="Error fetching template." iconVariant="error" />, {
-        variant: "error"
-      });
+      // Console Air's `/api/proxy/{network}` route forwards to the upstream Console API
+      // anonymously — saved user templates require an authenticated session that this
+      // build doesn't carry, so the upstream replies 401/403/404. Surface a clear message
+      // (and keep the existing form state intact) instead of a vague "Error fetching template".
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      const isUnavailable = status === 401 || status === 403 || status === 404;
+      enqueueSnackbar(
+        <Snackbar
+          title={isUnavailable ? "Saved templates aren't available in Console Air." : "Error fetching template."}
+          subTitle={isUnavailable ? "Use the YAML or Upload tab to bring your own SDL." : undefined}
+          iconVariant="error"
+        />,
+        { variant: "error" }
+      );
 
       setIsLoadingTemplate(false);
     }

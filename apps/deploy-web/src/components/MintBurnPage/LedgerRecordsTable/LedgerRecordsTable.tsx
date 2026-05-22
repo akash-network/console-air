@@ -5,7 +5,7 @@ import { cn } from "@akashnetwork/ui/utils";
 import { createColumnHelper, flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from "@tanstack/react-table";
 
 import { UAKT_DENOM } from "@src/config/denom.config";
-import { useBlock } from "@src/queries/useBlocksQuery";
+import { getBlockHeight, getBlockTime, useBlock } from "@src/queries/useBlocksQuery";
 import { udenomToDenom } from "@src/utils/mathHelpers";
 import { averageBlockTime } from "@src/utils/priceUtils";
 
@@ -23,8 +23,8 @@ interface LedgerRecordsTableProps {
 
 export const LedgerRecordsTable: React.FC<LedgerRecordsTableProps> = ({ records, isLoading, dependencies: d = DEPENDENCIES }) => {
   const { data: latestBlock } = d.useBlock("latest", { refetchInterval: 30000 });
-  const latestHeight = latestBlock ? parseInt(latestBlock.block.header.height) : undefined;
-  const latestBlockTime = latestBlock?.block.header.time as string | undefined;
+  const latestHeight = getBlockHeight(latestBlock) ?? undefined;
+  const latestBlockTime = getBlockTime(latestBlock)?.toISOString();
 
   const columns = useMemo(() => createColumns(latestHeight, latestBlockTime), [latestHeight, latestBlockTime]);
   const sortedRecords = useMemo(() => [...records].sort((a, b) => parseInt(b.id.height) - parseInt(a.id.height)), [records]);

@@ -13,10 +13,13 @@ async function getBidList(apiClient: AxiosInstance, address: string, dseq: strin
   const response = await apiClient.get<{ bids: RpcBid[] }>(ApiUrlService.bidList("", address, dseq));
   const { bids } = response.data;
 
-  return bids.map(mapToBidDto);
+  // A malformed entry (missing `bid` field) would otherwise blow up the whole list render
+  // when downstream code reads bid.id / bid.resources_offer. Drop it instead.
+  return bids.map(mapToBidDto).filter((b): b is BidDto => b !== null);
 }
 
-export function mapToBidDto(b: RpcBid): BidDto {
+export function mapToBidDto(b: RpcBid): BidDto | null {
+  if (!b?.bid?.id) return null;
   return {
     id: b.bid.id.provider + b.bid.id.dseq + b.bid.id.gseq + b.bid.id.oseq,
     owner: b.bid.id.owner,
@@ -26,7 +29,7 @@ export function mapToBidDto(b: RpcBid): BidDto {
     oseq: b.bid.id.oseq,
     price: b.bid.price,
     state: b.bid.state,
-    resourcesOffer: b.bid.resources_offer
+    resourcesOffer: b.bid.resources_offer ?? []
   };
 }
 

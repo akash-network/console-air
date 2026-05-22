@@ -63,6 +63,11 @@ async function forwardRequestStream(req: NextApiRequest, res: NextApiResponse, o
 
     const lowKey = key.toLowerCase();
     if (lowKey === "host" || lowKey === "connection" || lowKey === "cookie") return;
+    // Forward an explicit "identity" so the upstream returns uncompressed bytes regardless
+    // of what the browser asked for. Otherwise we'd be relying on undici's transparent
+    // decompression — which works on current Node 22 but has historically lagged for brotli,
+    // and which we'd be silently lying about by stripping Content-Encoding on the way back.
+    if (lowKey === "accept-encoding") return;
     if (HEADERS_TO_SKIP.has(lowKey)) return;
     if (!Array.isArray(value)) {
       headers.set(key, value);
@@ -70,6 +75,7 @@ async function forwardRequestStream(req: NextApiRequest, res: NextApiResponse, o
     }
     value.forEach(v => headers.append(key, v));
   });
+  headers.set("accept-encoding", "identity");
 
   const method = req.method?.toUpperCase() || "GET";
   const contentLength = Number(req.headers["content-length"]) || 0;

@@ -138,7 +138,7 @@ export const LeaseRow = React.forwardRef<AcceptRefType, Props>(
       updateFavoriteProviders(newFavorites);
     };
 
-    const gpuModels = bid && bid.bid.resources_offer.flatMap(x => getGpusFromAttributes(x.resources.gpu.attributes));
+    const gpuModels = bid?.bid?.resources_offer?.flatMap(x => getGpusFromAttributes(x.resources.gpu.attributes)) ?? [];
 
     const sshInstructions = useMemo(() => {
       return servicesNames.reduce((acc, serviceName) => {
