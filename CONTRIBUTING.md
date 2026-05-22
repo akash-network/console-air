@@ -17,7 +17,7 @@ Thank you for considering contributing to `@akashnetwork/console-air` — the se
 
 ### III. Repo Layout
 
-This repo contains a single Next.js application under `/apps/deploy-web` and shared workspaces under `/packages/*`. The fork strips managed-wallet/custodial features (Auth0, custodial wallet popup, user accounts backend, alerts, API keys, Git OAuth deploy). Authentication is wallet-only (Keplr, Leap, Cosmostation, MetaMask Cosmos extension).
+This repo contains a single Next.js application under `/apps/deploy-web` and shared workspaces under `/packages/*`. The fork strips managed-wallet/custodial features (Auth0, custodial wallet popup, user accounts backend, alerts, API keys, Git OAuth deploy). Authentication is wallet-only (Keplr, Cosmostation, MetaMask Cosmos extension).
 
 Installing an npm package must be done at the root with the workspace flag, e.g.:
 

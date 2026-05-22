@@ -5,7 +5,7 @@ tone_instructions: >
   Be concise. Focus on bugs, security, concurrency and correctness.
   Skip style nitpicks and obvious comments. This is the self-custody fork
   (`@akashnetwork/console-air`) — there is no managed backend, no auth0,
-  no Drizzle/SQL layer. Wallet auth is via Keplr/Leap/Cosmostation.
+  no Drizzle/SQL layer. Wallet auth is via Keplr/Cosmostation.
 reviews:
   profile: chill
   request_changes_workflow: false
