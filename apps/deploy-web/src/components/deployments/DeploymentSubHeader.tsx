@@ -15,6 +15,7 @@ import { useDenomData } from "@src/hooks/useWalletBalance";
 import type { DeploymentDto, LeaseDto } from "@src/types/deployment";
 import { udenomToDenom } from "@src/utils/mathHelpers";
 import { getAvgCostPerMonth } from "@src/utils/priceUtils";
+import { isLeaseLive } from "@src/utils/reclamationUtils";
 
 type Props = {
   deployment: DeploymentDto;
@@ -27,8 +28,8 @@ export const DeploymentSubHeader: React.FunctionComponent<Props> = ({ deployment
   const avgCost = udenomToDenom(getAvgCostPerMonth(deploymentCost));
   const isActive = deployment.state === "active";
   const hasLeases = !!leases && leases.length > 0;
-  const hasActiveLeases = hasLeases && leases.some(l => l.state === "active");
-  const hasGpu = leases?.some(l => l.state === "active" && l.gpuAmount && l.gpuAmount > 0);
+  const hasActiveLeases = hasLeases && leases.some(isLeaseLive);
+  const hasGpu = leases?.some(l => isLeaseLive(l) && l.gpuAmount && l.gpuAmount > 0);
   const denomData = useDenomData(deployment.escrowAccount.state.funds[0]?.denom || "");
 
   return (
