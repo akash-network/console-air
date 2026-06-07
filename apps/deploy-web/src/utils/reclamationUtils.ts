@@ -1,6 +1,6 @@
 import { LeaseClosedReason } from "@akashnetwork/chain-sdk/private-types/akash.v1";
 
-import type { LeaseDto } from "@src/types/deployment";
+import type { DeploymentGroup, LeaseDto } from "@src/types/deployment";
 
 export type LeaseCloseParty = "tenant" | "provider" | "network" | "unknown";
 
@@ -52,6 +52,15 @@ export function getLeaseCloseReasonLabel(reason?: string): string {
   }
 }
 
+/**
+ * A lease's effective close reason. The reclamation-specific reason (set when a provider initiates
+ * AEP-82 reclamation) is more specific than the general close reason, so it wins when both are present.
+ * Centralizes the precedence so every surface labels the same lease identically.
+ */
+export function getLeaseCloseReason(lease: Pick<LeaseDto, "reason" | "reclamation">): string | undefined {
+  return lease.reclamation?.reason ?? lease.reason;
+}
+
 /** Reclamation deadline as a Date, or null when absent/0/NaN. `deadline` is unix seconds. */
 export function getReclamationDeadline(lease: Pick<LeaseDto, "reclamation">): Date | null {
   const deadline = lease.reclamation?.deadline;
@@ -75,6 +84,11 @@ function hasReclamationStarted(lease: Pick<LeaseDto, "reclamation">): boolean {
   return startedAt !== undefined && Number(startedAt) > 0;
 }
 
+/** A group a provider has paused as part of AEP-82 reclamation — the single source for that signal. */
+function isGroupReclaimed(group: Pick<DeploymentGroup, "state"> | undefined): boolean {
+  return group?.state === "paused";
+}
+
 /**
  * Terminal reclamation: the provider has reclaimed the lease and it is no longer live.
  * "Reclaimed" requires reclamation *evidence* (reclamation started, or the group is paused) — a bare
@@ -83,5 +97,10 @@ function hasReclamationStarted(lease: Pick<LeaseDto, "reclamation">): boolean {
  */
 export function isProviderReclaimed(lease: ReclaimableLease): boolean {
   if (isReclaiming(lease)) return false;
-  return hasReclamationStarted(lease) || lease.group?.state === "paused";
+  return hasReclamationStarted(lease) || isGroupReclaimed(lease.group);
+}
+
+/** Whether any of a deployment's groups has been paused by a provider for reclamation. */
+export function hasReclaimedGroup(groups: Array<Pick<DeploymentGroup, "state">> | undefined): boolean {
+  return groups?.some(isGroupReclaimed) ?? false;
 }

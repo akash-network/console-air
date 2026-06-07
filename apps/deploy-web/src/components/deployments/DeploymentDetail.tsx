@@ -18,7 +18,7 @@ import { useDeploymentDetail } from "@src/queries/useDeploymentQuery";
 import { useDeploymentLeaseList } from "@src/queries/useLeaseQuery";
 import { useProviderList } from "@src/queries/useProvidersQuery";
 import { RouteStep } from "@src/types/route-steps.type";
-import { isLeaseLive } from "@src/utils/reclamationUtils";
+import { hasReclaimedGroup, isLeaseLive } from "@src/utils/reclamationUtils";
 import { UrlService } from "@src/utils/urlUtils";
 import Layout from "../layout/Layout";
 import { Title } from "../shared/Title";
@@ -64,7 +64,7 @@ export const DeploymentDetail: FC<DeploymentDetailProps> = ({ dseq }) => {
     if (leases) {
       // Redirect to select bids if has no lease — but not when a group is paused (reclaimed): the
       // deployment is still active with no live lease, and must remain viewable, not bounce to bid selection.
-      if (deployment?.state === "active" && leases.length === 0 && !deployment.groups?.some(g => g.state === "paused")) {
+      if (deployment?.state === "active" && leases.length === 0 && !hasReclaimedGroup(deployment.groups)) {
         router.replace(UrlService.newDeployment({ dseq, step: RouteStep.createLeases }));
       }
 

@@ -8,7 +8,7 @@ import { WarningTriangle } from "iconoir-react";
 import Link from "next/link";
 
 import type { LeaseDto } from "@src/types/deployment";
-import { getLeaseCloseReasonLabel, getReclamationDeadline, isReclaiming } from "@src/utils/reclamationUtils";
+import { getLeaseCloseReason, getLeaseCloseReasonLabel, getReclamationDeadline, isReclaiming } from "@src/utils/reclamationUtils";
 import { UrlService } from "@src/utils/urlUtils";
 
 type Props = {
@@ -31,9 +31,10 @@ export const ReclamationBanner: React.FunctionComponent<Props> = ({ leases, dseq
   }, [reclaimingLeases]);
 
   const countdown = useCountdown(nearestDeadline);
-  const reasonLabel = getLeaseCloseReasonLabel(reclaimingLeases[0]?.reclamation?.reason ?? reclaimingLeases[0]?.reason);
 
   if (reclaimingLeases.length === 0) return null;
+
+  const reasonLabel = getLeaseCloseReasonLabel(getLeaseCloseReason(reclaimingLeases[0]));
 
   return (
     <Alert variant="warning" className="mt-4">
@@ -62,8 +63,14 @@ function useCountdown(deadline: Date | null): string | null {
   const deadlineTime = deadline?.getTime();
 
   useEffect(() => {
-    if (deadlineTime === undefined) return;
-    const interval = setInterval(() => setNow(new Date()), 1000);
+    // Tick only while the deadline is in the future; once it passes, render once more and stop —
+    // otherwise the interval keeps re-rendering the banner every second with identical output.
+    if (deadlineTime === undefined || Date.now() >= deadlineTime) return;
+    const interval = setInterval(() => {
+      const current = new Date();
+      setNow(current);
+      if (current.getTime() >= deadlineTime) clearInterval(interval);
+    }, 1000);
     return () => clearInterval(interval);
   }, [deadlineTime]);
 

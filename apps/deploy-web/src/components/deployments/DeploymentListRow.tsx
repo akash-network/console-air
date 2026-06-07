@@ -34,7 +34,7 @@ import type { LeaseDto, NamedDeploymentDto } from "@src/types/deployment";
 import type { ApiProviderList } from "@src/types/provider";
 import { udenomToDenom } from "@src/utils/mathHelpers";
 import { getAvgCostPerMonth, getTimeLeft } from "@src/utils/priceUtils";
-import { getLeaseCloseReasonLabel, getReclamationDeadline, isLeaseLive, isProviderReclaimed, isReclaiming } from "@src/utils/reclamationUtils";
+import { getLeaseCloseReason, getLeaseCloseReasonLabel, getReclamationDeadline, isLeaseLive, isProviderReclaimed, isReclaiming } from "@src/utils/reclamationUtils";
 import { TransactionMessageData } from "@src/utils/TransactionMessageData";
 import { UrlService } from "@src/utils/urlUtils";
 import { CopyTextToClipboardButton } from "../shared/CopyTextToClipboardButton";
@@ -74,7 +74,7 @@ export const DeploymentListRow: React.FunctionComponent<Props> = ({ deployment, 
   const reclaimingLease = filteredLeases?.find(isReclaiming);
   const closedLease = filteredLeases?.find(l => !isLeaseLive(l));
   const isAllLeasesClosed = !!filteredLeases?.length && !hasActiveLeases;
-  const deploymentCost = hasActiveLeases ? liveLeases?.reduce((prev, current) => prev + parseFloat(current.price.amount), 0) : 0;
+  const deploymentCost = liveLeases?.reduce((prev, current) => prev + parseFloat(current.price.amount), 0) ?? 0;
   const reclaimDeadline = reclaimingLease ? getReclamationDeadline(reclaimingLease) : null;
   const closedReasonLabel = closedLease ? getClosedLeaseLabel(closedLease) : null;
   const hasGpu = Boolean(deployment.gpuAmount && deployment.gpuAmount > 0);
@@ -98,7 +98,7 @@ export const DeploymentListRow: React.FunctionComponent<Props> = ({ deployment, 
   const lease = filteredLeases?.find(lease => !!(lease?.provider && providersByOwner[lease.provider]));
   const provider = providersByOwner[lease?.provider || ""];
   const providerCredentials = useProviderCredentials();
-  const { data: leaseStatus } = useLeaseStatus({ provider, lease, enabled: !!(provider && lease?.state === "active" && providerCredentials.details.usable) });
+  const { data: leaseStatus } = useLeaseStatus({ provider, lease, enabled: !!(provider && lease && isLeaseLive(lease) && providerCredentials.details.usable) });
 
   const viewDeployment = useCallback(() => {
     router.push(UrlService.deploymentDetails(deployment.dseq));
@@ -381,7 +381,7 @@ function getTimeLeftText(timeLeft?: Date) {
 }
 
 export function getClosedLeaseLabel(lease: LeaseDto): string {
-  const label = getLeaseCloseReasonLabel(lease.reason ?? lease.reclamation?.reason);
+  const label = getLeaseCloseReasonLabel(getLeaseCloseReason(lease));
   // A reclaimed lease whose reason didn't classify (e.g. only the group is paused) still reads as provider-closed.
   return label === "Closed" && isProviderReclaimed(lease) ? "Closed by provider" : label;
 }

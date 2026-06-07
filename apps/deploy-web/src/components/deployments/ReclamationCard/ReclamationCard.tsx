@@ -10,7 +10,7 @@ import { useLocalNotes } from "@src/components/LocalNoteManager";
 import { useWallet } from "@src/context/WalletProvider";
 import { useManagedDeploymentConfirm } from "@src/hooks/useManagedDeploymentConfirm";
 import type { LeaseDto } from "@src/types/deployment";
-import { getLeaseCloseReasonLabel } from "@src/utils/reclamationUtils";
+import { getLeaseCloseReason, getLeaseCloseReasonLabel } from "@src/utils/reclamationUtils";
 import { TransactionMessageData } from "@src/utils/TransactionMessageData";
 import { UrlService } from "@src/utils/urlUtils";
 
@@ -36,7 +36,7 @@ export const ReclamationCard: React.FunctionComponent<Props> = ({ lease, dseq, o
   const router = useRouter();
   const [isClosing, setIsClosing] = useState(false);
 
-  const reasonLabel = getLeaseCloseReasonLabel(lease.reclamation?.reason ?? lease.reason);
+  const reasonLabel = getLeaseCloseReasonLabel(getLeaseCloseReason(lease));
   const hasLocalManifest = !!getDeploymentData(dseq)?.manifest;
 
   const onClose = async () => {
