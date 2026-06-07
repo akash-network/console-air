@@ -1,7 +1,10 @@
+import { DeploymentReclamation } from "@akashnetwork/chain-sdk/private-types/akash.v1";
+import type { HttpClient } from "@akashnetwork/http-sdk";
 import yaml from "js-yaml";
 import { describe, expect, it } from "vitest";
+import { mock } from "vitest-mock-extended";
 
-import { replaceSdlDenom } from "./v1beta3";
+import { NewDeploymentData, replaceSdlDenom } from "./v1beta3";
 
 describe(replaceSdlDenom.name, () => {
   it("replaces denom in a single placement pricing entry", () => {
@@ -101,5 +104,38 @@ describe(replaceSdlDenom.name, () => {
     });
 
     return { sdl };
+  }
+});
+
+describe(NewDeploymentData.name, () => {
+  it("forwards the reclamation block when the SDL declares one", async () => {
+    const { chainApiHttpClient, sdl } = setup({ version: "2.1", reclamation: { min_window: "24h" } });
+
+    const result = await NewDeploymentData(chainApiHttpClient, sdl, "12345", "akash1abc", 5);
+
+    expect(result.reclamation).toEqual(DeploymentReclamation.fromPartial({ minWindow: { seconds: 86400 } }));
+  });
+
+  it("omits reclamation for an SDL without a reclamation block", async () => {
+    const { chainApiHttpClient, sdl } = setup({ version: "2.0" });
+
+    const result = await NewDeploymentData(chainApiHttpClient, sdl, "12345", "akash1abc", 5);
+
+    expect(result.reclamation).toBeUndefined();
+  });
+
+  function setup(input: { version: "2.0" | "2.1"; reclamation?: { min_window: string } }) {
+    const chainApiHttpClient = mock<HttpClient>();
+    const sdl = yaml.dump({
+      version: input.version,
+      services: { web: { image: "nginx", expose: [{ port: 80, as: 80, to: [{ global: true }] }] } },
+      profiles: {
+        compute: { web: { resources: { cpu: { units: 0.5 }, memory: { size: "512Mi" }, storage: { size: "1Gi" } } } },
+        placement: { dcloud: { pricing: { web: { denom: "uakt", amount: 1000 } } } }
+      },
+      deployment: { web: { dcloud: { profile: "web", count: 1 } } },
+      ...(input.reclamation ? { reclamation: input.reclamation } : {})
+    });
+    return { chainApiHttpClient, sdl };
   }
 });
