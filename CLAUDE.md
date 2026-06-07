@@ -8,7 +8,7 @@ Self-custody (AEP-84) fork of Akash Console. Only app is `apps/deploy-web` (ther
 `chore/bump-chain-sdk-alpha-34`, `fix/provider-dedup-alias-resolution`. `<type>` is the
 conventional-commit type (`feat|fix|chore|docs|ci|refactor|test|perf|style|build|revert`).
 
-- **Do NOT use Linear's auto-generated `gitBranchName`** (e.g. `maximebeauchamp/con-434-l-15-...`),
+- **Do NOT use Linear's auto-generated `gitBranchName`** (e.g. `<author>/con-434-l-15-...`),
   even when a handoff, plan, or Linear issue suggests it. Reference the CON issue in the **commit
   message and PR body**, not the branch name.
 - One PR per Linear issue. If issue B depends on issue A, stack B's branch on A's and set the PR base
