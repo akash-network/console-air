@@ -59,7 +59,8 @@ export class TransactionMessageData {
         deposit: {
           amount: deploymentData.deposit,
           sources: [Source.grant, Source.balance]
-        }
+        },
+        reclamation: deploymentData.reclamation
       })
     };
   }
