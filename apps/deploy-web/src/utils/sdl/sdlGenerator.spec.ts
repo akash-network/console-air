@@ -25,6 +25,22 @@ describe("sdlGenerator", () => {
       expect(parsed.services["web"].params).toBeUndefined();
     });
 
+    it("preserves the command verbatim without forcing a sh -c wrapper", () => {
+      const result = generateSdl([createLogCollectorService({ title: "web", image: "nginx:latest", command: { command: "bash\n-lc", arg: "./run.sh" } })]);
+      const parsed = yaml.load(result) as { services: Record<string, { command?: unknown; args?: unknown }> };
+
+      expect(parsed.services.web.command).toEqual(["bash", "-lc"]);
+      expect(parsed.services.web.args).toEqual(["./run.sh"]);
+    });
+
+    it("does not emit an args key when a service has a command but no arg", () => {
+      const result = generateSdl([createLogCollectorService({ title: "web", image: "nginx:latest", command: { command: "sh\n-c\necho hello", arg: "" } })]);
+      const parsed = yaml.load(result) as { services: Record<string, { command?: unknown }> };
+
+      expect(parsed.services.web.command).toEqual(["sh", "-c", "echo hello"]);
+      expect(parsed.services.web).not.toHaveProperty("args");
+    });
+
     function createLogCollectorService(overrides?: Partial<ServiceType>): ServiceType {
       return {
         id: "web-log-collector",
@@ -49,33 +65,34 @@ describe("sdlGenerator", () => {
     }
   });
 
-  describe("buildCommand", () => {
-    it("returns empty string for an empty string", () => {
-      expect(buildCommand("")).toEqual("");
+  describe(buildCommand.name, () => {
+    it("returns an empty array for an empty string", () => {
+      expect(buildCommand("")).toEqual([]);
     });
 
-    it("returns string if command is a single line string", () => {
-      expect(buildCommand("echo 'foo'")).toEqual("echo 'foo'");
+    it("returns a single-element array for a single line", () => {
+      expect(buildCommand("echo 'foo'")).toEqual(["echo 'foo'"]);
     });
 
-    it("returns array starting with sh -c when it starts with sh -c", () => {
-      expect(buildCommand("sh -c foo")).toEqual(["sh", "-c", "foo\n"]);
+    it("splits newline-separated tokens into an array", () => {
+      expect(buildCommand("sh\n-c")).toEqual(["sh", "-c"]);
     });
 
-    it("returns array containing only sh -c when it is only with sh -c", () => {
-      expect(buildCommand("sh -c")).toEqual(["sh", "-c"]);
+    it("keeps a script token as its own array element", () => {
+      expect(buildCommand("sh\n-c\nfoo")).toEqual(["sh", "-c", "foo"]);
     });
 
-    it("returns array starting with sh -c for a multi-line string", () => {
-      expect(buildCommand("foo\nbar")).toEqual(["sh", "-c", "foo\nbar\n"]);
+    it("does not force a sh -c wrapper for multi-token commands", () => {
+      expect(buildCommand("bash\n-lc")).toEqual(["bash", "-lc"]);
     });
 
-    it("returns array starting with sh -c for a multi-line string with a newline at the end", () => {
-      expect(buildCommand("foo\nbar\n")).toEqual(["sh", "-c", "foo\nbar\n"]);
+    it("drops empty lines and trailing newlines", () => {
+      expect(buildCommand("foo\nbar\n")).toEqual(["foo", "bar"]);
+      expect(buildCommand("foo\nbar\n\n")).toEqual(["foo", "bar"]);
     });
 
-    it("returns array starting with sh -c for a multi-line string with multiple newlines at the end", () => {
-      expect(buildCommand("foo\nbar\n\n")).toEqual(["sh", "-c", "foo\nbar\n"]);
+    it("trims whitespace around each token", () => {
+      expect(buildCommand(" foo \n bar ")).toEqual(["foo", "bar"]);
     });
   });
 });

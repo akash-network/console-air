@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { buildCommand } from "./sdlGenerator";
 import { importSimpleSdl, parseSvcCommand } from "./sdlImport";
 
 describe("sdlImport", () => {
@@ -30,16 +31,34 @@ describe("sdlImport", () => {
       expect(parseSvcCommand(["echo", "", "foo"])).toEqual("echo\nfoo");
     });
 
-    it("returns command as string if command is array of strings with sh -c", () => {
-      expect(parseSvcCommand(["sh", "-c", "echo 'foo'"])).toEqual("echo 'foo'");
+    it("preserves a leading sh -c instead of stripping it", () => {
+      expect(parseSvcCommand(["sh", "-c", "echo 'foo'"])).toEqual("sh\n-c\necho 'foo'");
     });
 
-    it("returns rest of command as string if command is array of strings with sh -c", () => {
-      expect(parseSvcCommand(["sh", "-c", "echo 'foo'", "echo 'bar'"])).toEqual("echo 'foo'\necho 'bar'");
+    it("joins every command element with a newline", () => {
+      expect(parseSvcCommand(["sh", "-c", "echo 'foo'", "echo 'bar'"])).toEqual("sh\n-c\necho 'foo'\necho 'bar'");
     });
 
-    it("returns rest of command as string if command is array of strings with sh -c, drops empty lines", () => {
-      expect(parseSvcCommand(["sh", "-c", "echo 'foo'", "", "echo 'bar'"])).toEqual("echo 'foo'\necho 'bar'");
+    it("joins every command element with a newline, dropping empty lines", () => {
+      expect(parseSvcCommand(["sh", "-c", "echo 'foo'", "", "echo 'bar'"])).toEqual("sh\n-c\necho 'foo'\necho 'bar'");
+    });
+  });
+
+  describe("command round-trip", () => {
+    it.each([
+      { command: ["bash", "-lc"], args: ["./run.sh"] },
+      { command: ["sh", "-c"], args: ["echo hi"] },
+      { command: ["sh", "-c", "echo foo"], args: undefined },
+      { command: ["bash", "-c"], args: ["run"] }
+    ])("preserves command $command and args $args without forcing a shell wrapper", ({ command, args }) => {
+      const formCommand = parseSvcCommand(command);
+      const formArg = args ? args[0] : "";
+
+      const rebuiltCommand = buildCommand(formCommand.trim());
+      const rebuiltArgs = formArg ? [formArg] : undefined;
+
+      expect(rebuiltCommand).toEqual(command);
+      expect(rebuiltArgs).toEqual(args);
     });
   });
 
