@@ -56,25 +56,22 @@ export const ReclamationCard: React.FunctionComponent<Props> = ({ lease, dseq, o
   const onRedeploy = () => router.push(UrlService.newDeployment({ redeploy: dseq }));
 
   return (
-    <Alert variant="warning" className="mt-4">
+    <Alert variant="warning" className="p-4">
       <WarningTriangle className="h-4 w-4" />
       <AlertTitle>{reasonLabel}</AlertTitle>
       <AlertDescription>
-        <p>
-          This lease was reclaimed by the provider and is no longer running. Closing the deployment recovers any remaining escrow; redeploying starts it again
-          on a new lease.
-        </p>
+        <p>This deployment was stopped by the provider, so it&apos;s no longer running. Redeploy to get back online, or close it to recover any unused funds.</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button variant="default" size="sm" onClick={onClose} disabled={isClosing}>
-            {isClosing ? <Spinner size="small" /> : "Close (recover escrow)"}
+            {isClosing ? <Spinner size="small" /> : "Close & refund"}
           </Button>
           {hasLocalManifest ? (
-            <Button variant="outline" size="sm" onClick={onRedeploy}>
+            <Button variant="outline" size="sm" className="text-foreground" onClick={onRedeploy}>
               Redeploy
             </Button>
           ) : (
-            <Link href={UrlService.newDeployment()} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-              Start from a new SDL
+            <Link href={UrlService.newDeployment()} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "text-foreground")}>
+              Start a new deployment
             </Link>
           )}
         </div>
