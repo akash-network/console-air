@@ -1,4 +1,4 @@
-import { endOfDay, startOfDay, subDays } from "date-fns";
+import { endOfDay, formatDuration, intervalToDuration, startOfDay, subDays } from "date-fns";
 
 import { roundDecimal } from "./mathHelpers";
 
@@ -41,6 +41,22 @@ export function getPrettyTime(timeMs: number): string {
   } else {
     return `${Math.floor(timeMs / 1_000 / 60 / 60)}h ${roundDecimal(timeMs / 1_000 / 60, 2) % 60}m`;
   }
+}
+
+/**
+ * Formats a provider's offered reclamation window (AEP-82) into a human-readable label.
+ * The window arrives as a protobuf Duration string from the REST gateway, e.g. "3600s" -> "1 hour".
+ * Returns null when absent, non-positive, or malformed so callers render nothing.
+ */
+export function formatReclamationWindow(window?: string): string | null {
+  if (!window) return null;
+
+  const seconds = parseFloat(window);
+  if (!Number.isFinite(seconds) || seconds <= 0) return null;
+
+  // intervalToDuration truncates any leftover < 1s, so a fractional Duration like "60.5s" -> "1 minute".
+  const duration = intervalToDuration({ start: 0, end: seconds * 1000 });
+  return formatDuration(duration, { format: ["days", "hours", "minutes", "seconds"], delimiter: ", " });
 }
 
 export function createDateRange(input: { from?: Date; to?: Date } = {}): { from: Date; to: Date } {

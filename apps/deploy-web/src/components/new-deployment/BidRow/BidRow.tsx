@@ -9,6 +9,7 @@ import { useServices } from "@src/context/ServicesProvider";
 import { useProviderStatus } from "@src/queries/useProvidersQuery";
 import type { BidDto } from "@src/types/deployment";
 import type { ApiProviderList } from "@src/types/provider";
+import { formatReclamationWindow } from "@src/utils/dateUtils";
 import { getGpusFromAttributes } from "@src/utils/deploymentUtils";
 import { hasSomeParentTheClass } from "@src/utils/domUtils";
 import { udenomToDenom } from "@src/utils/mathHelpers";
@@ -70,6 +71,9 @@ export const BidRow: React.FunctionComponent<Props> = ({
     retry: false
   });
   const gpuModels = bid.resourcesOffer?.flatMap(x => getGpusFromAttributes(x.resources.gpu.attributes)) ?? [];
+  // AEP-82: a provider may offer a reclamation window on its bid. Surface it only when present so
+  // bids without one (today's norm, until provider v0.13 / node 2.1) render exactly as before.
+  const reclamationWindow = formatReclamationWindow(bid.reclamationWindow);
 
   useEffect(() => {
     if (provider) {
@@ -145,6 +149,13 @@ export const BidRow: React.FunctionComponent<Props> = ({
           <div className="pl-2">
             <c.CopyTextToClipboardButton value={provider?.name ?? provider?.hostUri ?? "-"} />
           </div>
+          {reclamationWindow && (
+            <c.CustomTooltip title={<>This provider honors a reclamation window of {reclamationWindow}.</>}>
+              <c.Badge variant="outline" className="ml-2 whitespace-nowrap border-amber-500 text-xs text-amber-600">
+                Reclamation: {reclamationWindow}
+              </c.Badge>
+            </c.CustomTooltip>
+          )}
         </div>
       </c.TableCell>
 

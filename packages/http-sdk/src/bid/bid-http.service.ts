@@ -60,6 +60,9 @@ export type Bid = {
       count: number;
     }[];
     created_at: string;
+    // Reclamation window the provider offers on this bid (AEP-82), as a Duration string e.g. "3600s".
+    // Absent until provider v0.13 / node 2.1 emit it.
+    reclamation_window?: string;
   };
   escrow_account: {
     id: {

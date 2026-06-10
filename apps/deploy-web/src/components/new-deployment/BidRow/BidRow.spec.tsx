@@ -67,6 +67,24 @@ describe(BidRow.name, () => {
     );
   });
 
+  it("shows the offered reclamation window when the bid carries one", () => {
+    const provider = buildProvider();
+    const bid = buildDeploymentBid({ provider: provider.owner, reclamationWindow: "3600s" });
+
+    const { getByText } = setup({ bid, provider });
+
+    expect(getByText("Reclamation: 1 hour")).toBeInTheDocument();
+  });
+
+  it("renders no reclamation badge when the bid offers no window", () => {
+    const provider = buildProvider();
+    const bid = buildDeploymentBid({ provider: provider.owner });
+
+    const { queryByText } = setup({ bid, provider });
+
+    expect(queryByText(/Reclamation:/)).not.toBeInTheDocument();
+  });
+
   it("does not display RadioGroupItem when disabled or bid closed", () => {
     const provider = buildProvider({
       hostUri: "https://provider-host-uri",

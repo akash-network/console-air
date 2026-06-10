@@ -303,6 +303,8 @@ export interface BidDto {
     resources: DeploymentResource_V3;
     count: number;
   }>;
+  // Reclamation window the provider offers on this bid (AEP-82), as a Duration string e.g. "3600s".
+  reclamationWindow?: string;
 }
 
 export interface RpcDepositParams {
