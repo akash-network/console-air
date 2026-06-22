@@ -184,6 +184,14 @@ export const generateSdl = (services: ServiceType[], region?: string) => {
       };
     }
 
+    // Preserve the TEE param through the round-trip even though the builder UI cannot edit it yet.
+    if (service.params?.tee) {
+      sdl.services[service.title].params = {
+        ...sdl.services[service.title].params,
+        tee: service.params.tee
+      };
+    }
+
     // Placement
     sdl.profiles.placement[service.placement.name] = sdl.profiles.placement[service.placement.name] || { pricing: {} };
     sdl.profiles.placement[service.placement.name].pricing[service.title] = {
