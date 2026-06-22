@@ -1,8 +1,9 @@
+import yaml from "js-yaml";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { buildCommand } from "./sdlGenerator";
+import { buildCommand, generateSdl } from "./sdlGenerator";
 import { importSimpleSdl, parseSvcCommand } from "./sdlImport";
 
 describe("sdlImport", () => {
@@ -70,5 +71,63 @@ describe("sdlImport", () => {
 
       expect(services.map(service => service.title)).toEqual(["web", "service-2"]);
     });
+
+    it("captures params.tee onto the service model", () => {
+      const services = importSimpleSdl(teeSdl("cpu-gpu"));
+
+      expect(services[0].params?.tee).toBe("cpu-gpu");
+    });
+
+    it("leaves params undefined when the service has no tee param", () => {
+      const yml = fs.readFileSync(path.resolve(__dirname, "../../../tests/mocks/two-services-sdl.yml"), "utf8");
+
+      const services = importSimpleSdl(yml);
+
+      expect(services[0].params).toBeUndefined();
+    });
+  });
+
+  describe("tee round-trip", () => {
+    it("preserves params.tee when importing then regenerating the SDL", () => {
+      const services = importSimpleSdl(teeSdl("cpu"));
+      const regenerated = yaml.load(generateSdl(services)) as { services: Record<string, { params?: { tee?: string } }> };
+
+      expect(regenerated.services.web.params?.tee).toBe("cpu");
+    });
   });
 });
+
+const teeSdl = (tee: "cpu" | "cpu-gpu") => `---
+version: "2.1"
+services:
+  web:
+    image: nginx:latest
+    expose:
+      - port: 80
+        as: 80
+        to:
+          - global: true
+    params:
+      tee: ${tee}
+profiles:
+  compute:
+    web:
+      resources:
+        cpu:
+          units: 0.5
+        memory:
+          size: 512Mi
+        storage:
+          - size: 512Mi
+  placement:
+    dcloud:
+      pricing:
+        web:
+          denom: uakt
+          amount: 1000
+deployment:
+  web:
+    dcloud:
+      profile: web
+      count: 1
+`;

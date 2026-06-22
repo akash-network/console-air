@@ -18,6 +18,23 @@ describe("sdlGenerator", () => {
       });
     });
 
+    it("preserves params.tee carried on the service model", () => {
+      const result = generateSdl([createLogCollectorService({ title: "web", image: "nginx:latest", params: { tee: "cpu" } })]);
+      const parsed = yaml.load(result) as { services: Record<string, { params?: { tee?: string } }> };
+
+      expect(parsed.services.web.params?.tee).toBe("cpu");
+    });
+
+    it("merges params.tee alongside log-collector permissions", () => {
+      const result = generateSdl([createLogCollectorService({ params: { tee: "cpu-gpu" } })]);
+      const parsed = yaml.load(result) as { services: Record<string, { params?: { tee?: string; permissions?: unknown } }> };
+
+      expect(parsed.services["web-log-collector"].params).toEqual({
+        permissions: { read: ["deployment", "logs"] },
+        tee: "cpu-gpu"
+      });
+    });
+
     it("does not include permissions params for non-log-collector services", () => {
       const result = generateSdl([createLogCollectorService({ title: "web", image: "nginx:latest" })]);
       const parsed = yaml.load(result) as { services: Record<string, { params?: unknown }> };
