@@ -23,7 +23,7 @@
     "type-check": "tsc"
   },
   "dependencies": {
-    "@akashnetwork/chain-sdk": "1.0.0-alpha.36",
+    "@akashnetwork/chain-sdk": "1.0.0-alpha.38",
     "@akashnetwork/env-loader": "*",
     "@akashnetwork/http-sdk": "*",
     "@akashnetwork/logging": "*",
