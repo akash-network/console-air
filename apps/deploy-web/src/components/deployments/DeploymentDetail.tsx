@@ -13,6 +13,7 @@ import { NextSeo } from "next-seo";
 import { useServices } from "@src/context/ServicesProvider";
 import { useSettings } from "@src/context/SettingsProvider";
 import { useWallet } from "@src/context/WalletProvider";
+import { useDeclaredTeeTypes } from "@src/hooks/useDeclaredTeeTypes";
 import { useProviderCredentials } from "@src/hooks/useProviderCredentials/useProviderCredentials";
 import { useDeploymentDetail } from "@src/queries/useDeploymentQuery";
 import { useDeploymentLeaseList } from "@src/queries/useLeaseQuery";
@@ -94,6 +95,7 @@ export const DeploymentDetail: FC<DeploymentDetailProps> = ({ dseq }) => {
   }, [deployment, dseq, getLeases, getProviders, address, deploymentLocalStorage]);
 
   const isActive = deployment?.state === "active" && leases?.some(isLeaseLive);
+  const declaredTeeTypes = useDeclaredTeeTypes(deployment);
 
   const tabs = useMemo(() => {
     const tabs: { label: string; value: Tab }[] = [
@@ -206,7 +208,7 @@ export const DeploymentDetail: FC<DeploymentDetailProps> = ({ dseq }) => {
         <>
           <ReclamationBanner leases={leases} dseq={dseq} />
 
-          <DeploymentSubHeader deployment={deployment} leases={leases} />
+          <DeploymentSubHeader deployment={deployment} leases={leases} teeTypes={declaredTeeTypes} />
 
           <Tabs value={activeTab} onValueChange={value => changeTab(value as Tab)}>
             <TabsList

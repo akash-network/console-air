@@ -5,6 +5,7 @@ import formatDistanceToNow from "date-fns/formatDistanceToNow";
 import isValid from "date-fns/isValid";
 import { InfoCircle, WarningCircle } from "iconoir-react";
 
+import { ConfidentialComputeBadge } from "@src/components/shared/ConfidentialComputeBadge";
 import { CopyTextToClipboardButton } from "@src/components/shared/CopyTextToClipboardButton";
 import { LabelValue } from "@src/components/shared/LabelValue";
 import { PricePerTimeUnit } from "@src/components/shared/PricePerTimeUnit";
@@ -13,6 +14,7 @@ import { StatusPill } from "@src/components/shared/StatusPill";
 import { useDeploymentMetrics } from "@src/hooks/useDeploymentMetrics";
 import { useDenomData } from "@src/hooks/useWalletBalance";
 import type { DeploymentDto, LeaseDto } from "@src/types/deployment";
+import type { TeeType } from "@src/utils/confidentialCompute";
 import { udenomToDenom } from "@src/utils/mathHelpers";
 import { getAvgCostPerMonth } from "@src/utils/priceUtils";
 import { isLeaseLive } from "@src/utils/reclamationUtils";
@@ -20,10 +22,11 @@ import { isLeaseLive } from "@src/utils/reclamationUtils";
 type Props = {
   deployment: DeploymentDto;
   leases: LeaseDto[] | undefined | null;
+  teeTypes?: TeeType[];
   children?: ReactNode;
 };
 
-export const DeploymentSubHeader: React.FunctionComponent<Props> = ({ deployment, leases }) => {
+export const DeploymentSubHeader: React.FunctionComponent<Props> = ({ deployment, leases, teeTypes = [] }) => {
   const { deploymentCost, realTimeLeft } = useDeploymentMetrics({ deployment, leases });
   const avgCost = udenomToDenom(getAvgCostPerMonth(deploymentCost));
   const isActive = deployment.state === "active";
@@ -126,6 +129,7 @@ export const DeploymentSubHeader: React.FunctionComponent<Props> = ({ deployment
               <div>{deployment.state}</div>
               <StatusPill state={deployment.state} size="small" />
 
+              <ConfidentialComputeBadge teeTypes={teeTypes} />
             </div>
           }
         />
