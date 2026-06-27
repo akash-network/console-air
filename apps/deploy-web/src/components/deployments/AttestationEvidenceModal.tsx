@@ -1,8 +1,9 @@
 "use client";
-import type { ReactNode } from "react";
-import { useEffect } from "react";
-import { Alert, Badge, Popup, Spinner } from "@akashnetwork/ui/components";
+import { useEffect, useState } from "react";
+import { Alert, Badge, Button, Collapsible, CollapsibleContent, CollapsibleTrigger, Popup, Spinner } from "@akashnetwork/ui/components";
+import { cn } from "@akashnetwork/ui/utils";
 import saveFileInBrowser from "file-saver";
+import { NavArrowDown } from "iconoir-react";
 
 import { useAttestationQuoteMutation } from "@src/queries/useAttestationQuoteMutation";
 import type { AttestationReportStatus, AttestationReportVerdict } from "@src/queries/useAttestationValidationMutation";
@@ -35,20 +36,29 @@ function VerdictBadge({ verdict }: { verdict: AttestationReportVerdict }) {
   return <Badge variant={variant}>{label}</Badge>;
 }
 
-function ReportLabel({ children }: { children: ReactNode }) {
-  return <p className="text-xs font-medium text-muted-foreground">{children}</p>;
-}
+function ReportRow({ label, report, verdict }: { label: string; report: string; verdict?: AttestationReportVerdict }) {
+  // Each row owns its collapsed state so the raw base64 report stays hidden until the user
+  // opts in; rows expand independently rather than accordion-style.
+  const [open, setOpen] = useState(false);
 
-function ReportBlock({ label, report, verdict }: { label: string; report: string; verdict?: AttestationReportVerdict }) {
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between gap-2">
-        <ReportLabel>{label}</ReportLabel>
-        {verdict && <VerdictBadge verdict={verdict} />}
-      </div>
-      <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-md border bg-muted/40 p-2 font-mono text-xs">{report}</pre>
-      {verdict?.detail && <p className="text-xs text-muted-foreground">{verdict.detail}</p>}
-    </div>
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-md border">
+      <CollapsibleTrigger asChild>
+        <Button type="button" variant="ghost" className="flex h-auto w-full items-center justify-between gap-2 p-3 normal-case">
+          <span className="flex items-center gap-2">
+            <NavArrowDown fontSize="1rem" className={cn("transition-transform duration-100", { "rotate-180": open })} />
+            <span className="text-sm font-medium">{label}</span>
+          </span>
+          {verdict && <VerdictBadge verdict={verdict} />}
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="space-y-2 border-t p-3">
+          <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-md border bg-muted/40 p-2 font-mono text-xs">{report}</pre>
+          {verdict?.detail && <p className="text-xs text-muted-foreground">{verdict.detail}</p>}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -150,11 +160,6 @@ export function AttestationEvidenceModal({ provider, lease, onClose, dependencie
 
       {!isPending && quote && (
         <div className="mt-3 space-y-3">
-          <div className="flex items-center justify-between gap-4 text-sm">
-            <span className="text-muted-foreground">Platform</span>
-            <span className="font-medium uppercase">{quote.tee_platform}</span>
-          </div>
-
           {validation.isPending && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Spinner size="small" />
@@ -168,16 +173,17 @@ export function AttestationEvidenceModal({ provider, lease, onClose, dependencie
             </Alert>
           )}
 
-          <ReportBlock label="CPU report" report={quote.report} verdict={cpuVerdict} />
-
-          {gpuReports.length > 0 && (
-            <div className="space-y-2">
-              <ReportLabel>GPU reports ({gpuReports.length})</ReportLabel>
-              {gpuReports.map(gpu => (
-                <ReportBlock key={gpu.device_index} label={`GPU ${gpu.device_index}`} report={gpu.report} verdict={gpuVerdictByIndex.get(gpu.device_index)} />
-              ))}
-            </div>
-          )}
+          <div className="space-y-2">
+            <ReportRow label="CPU" report={quote.report} verdict={cpuVerdict} />
+            {gpuReports.map(gpu => (
+              <ReportRow
+                key={gpu.device_index}
+                label={`GPU ${gpu.device_index + 1}`}
+                report={gpu.report}
+                verdict={gpuVerdictByIndex.get(gpu.device_index)}
+              />
+            ))}
+          </div>
         </div>
       )}
     </Popup>
