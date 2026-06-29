@@ -71,7 +71,7 @@ jobs:
           persist-credentials: false
 
       - name: Use Node.js 22
-        uses: actions/setup-node@49933ea5286caeca1862841beb114f2bd0b94551 # v4.4.0
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
@@ -100,7 +100,7 @@ jobs:
           persist-credentials: false
 
       - name: Use Node.js 22
-        uses: actions/setup-node@49933ea5286caeca1862841beb114f2bd0b94551 # v4.4.0
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
