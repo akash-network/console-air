@@ -1,0 +1,17 @@
+# TLS for air.akash.network via cert-manager + Let's Encrypt DNS-01.
+# Requires ClusterIssuer letsencrypt-prod with a solver for dnsZone akash.network.
+#
+# Apply after DNS A record points air.akash.network → gateway ADDRESS.
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: console-air-tls
+  namespace: console-air
+spec:
+  secretName: console-air-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  dnsNames:
+    - air.akash.network

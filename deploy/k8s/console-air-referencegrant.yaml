@@ -1,0 +1,19 @@
+# Cross-namespace grant: akash-gateway may reference console-air-tls Secret.
+#
+# Apply:
+#   kubectl apply -f deploy/k8s/console-air-referencegrant.yaml
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ReferenceGrant
+metadata:
+  name: allow-gateway-console-air-tls
+  namespace: console-air
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      namespace: akash-gateway
+  to:
+    - group: ""
+      kind: Secret
+      name: console-air-tls
