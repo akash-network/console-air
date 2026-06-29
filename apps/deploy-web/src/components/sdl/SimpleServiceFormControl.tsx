@@ -37,6 +37,7 @@ import { udenomToDenom } from "@src/utils/mathHelpers";
 import { getAvgCostPerMonth } from "@src/utils/priceUtils";
 import { LeaseSpecDetail } from "../shared/LeaseSpecDetail";
 import { PriceValue } from "../shared/PriceValue";
+import { ConfidentialComputeControl } from "./ConfidentialComputeControl/ConfidentialComputeControl";
 import { EnvFormModal } from "./EnvFormModal/EnvFormModal";
 import { ImageCredentialsHost } from "./ImageCredentialsHost/ImageCredentialsHost";
 import { isLogCollectorService, LogCollectorControl } from "./LogCollectorControl/LogCollectorControl";
@@ -293,6 +294,10 @@ export const SimpleServiceFormControl: React.FunctionComponent<Props> = ({
                         gpuModels={gpuModels}
                         setValue={setValue as any}
                       />
+                    </div>
+
+                    <div>
+                      <ConfidentialComputeControl serviceIndex={serviceIndex} currentService={currentService} />
                     </div>
 
                     <div>
