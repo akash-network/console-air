@@ -1,0 +1,201 @@
+# Release console-air on version tags (v*).
+#
+# Required repository secrets:
+#   KUBECONFIG           — base64-encoded kubeconfig YAML; API server reachable over Tailscale
+#   TS_OAUTH_CLIENT_ID   — Tailscale OAuth client ID (tag:ci)
+#   TS_OAUTH_SECRET      — Tailscale OAuth client secret
+#
+# Required repository variable (optional):
+#   TAILSCALE_ORG        — tailnet name to verify after connecting
+#
+# Tailscale OAuth client setup (one-time):
+#   1. https://login.tailscale.com/admin/settings/oauth — create OAuth client
+#   2. Scopes: Devices Core (write) — allows CI runners to join the tailnet
+#   3. Tag: tag:ci (must exist in ACLs and allow access to the k8s API server)
+#   4. Store client ID + secret in the GitHub secrets above
+#
+# ACLs: ensure tag:ci can reach the cluster API (port 6443) on the tailnet.
+#
+# Trigger: git push origin v1.0.2
+# Image:   ghcr.io/akash-network/console-air:1.0.2
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v1.0.2)"
+        required: true
+        type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+      git_tag: ${{ steps.parse.outputs.git_tag }}
+    steps:
+      - name: Parse and validate tag
+        id: parse
+        env:
+          REF_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          tag="$REF_TAG"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "::error::Tag must match vX.Y.Z (e.g. v1.0.2). Got: $tag"
+            exit 1
+          fi
+          echo "git_tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: Vitest
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.validate.outputs.git_tag }}
+          persist-credentials: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5286caeca1862841beb114f2bd0b94551 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Pin npm to match packageManager field
+        run: npm install --global npm@11.11.0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run package unit tests
+        run: npm run test -w ./packages --if-present
+
+      - name: Run deploy-web unit tests
+        run: npm run test:unit -w apps/deploy-web
+
+  type-check:
+    name: TypeScript
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.validate.outputs.git_tag }}
+          persist-credentials: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5286caeca1862841beb114f2bd0b94551 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Pin npm to match packageManager field
+        run: npm install --global npm@11.11.0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check deploy-web
+        run: npm run type-check -w apps/deploy-web
+
+  build:
+    name: Build and push image
+    needs: [validate, test, type-check]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.validate.outputs.git_tag }}
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6eac436dceed0f4a8bae86676380 # v3.10.0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@14487c1264a927a096941912aeee9528a736c5a2 # v6.16.0
+        with:
+          context: .
+          file: apps/deploy-web/Dockerfile
+          push: true
+          tags: ghcr.io/akash-network/console-air:${{ needs.validate.outputs.version }}
+          build-args: |
+            NEXT_PUBLIC_APP_URL=https://air.akash.network
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to production
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Tailscale
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          timeout: 5m
+          use-cache: true
+
+      - name: Verify Tailscale connection
+        env:
+          TAILSCALE_ORG: ${{ vars.TAILSCALE_ORG }}
+        run: |
+          state=$(tailscale status --json | jq -r '.BackendState')
+          if [[ "$state" != "Running" ]]; then
+            echo "::error::Tailscale backend state is $state, expected Running"
+            exit 1
+          fi
+
+          if [[ -n "$TAILSCALE_ORG" ]]; then
+            tailnet=$(tailscale status --json | jq -r '.CurrentTailnet.Name')
+            if [[ "$tailnet" != "$TAILSCALE_ORG" ]]; then
+              echo "::error::Connected to tailnet $tailnet, expected $TAILSCALE_ORG"
+              exit 1
+            fi
+          fi
+
+      - name: Roll out
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+          IMAGE: ghcr.io/akash-network/console-air:${{ needs.validate.outputs.version }}
+        run: |
+          mkdir -p ~/.kube
+          printf '%s' "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+          if ! grep -q '^apiVersion:' ~/.kube/config; then
+            echo "::error::KUBECONFIG secret must be base64-encoded kubeconfig YAML"
+            exit 1
+          fi
+
+          kubectl -n console-air set image deployment/console-air web="$IMAGE"
+          kubectl -n console-air rollout status deployment/console-air --timeout=5m

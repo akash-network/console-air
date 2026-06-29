@@ -49,7 +49,10 @@ spec:
           # — with k8s's default IfNotPresent imagePullPolicy, the kubelet
           # keeps whatever was cached on the node, so subsequent pushes won't
           # land until you also bump the tag.
-          image: <docker-hub-user>/console-air:<version>
+          # Bootstrap image for first apply only. Release CI sets the running tag
+          # via kubectl set image; do not bump this on each release.
+          image: ghcr.io/akash-network/console-air:0.0.0
+          imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 3001
@@ -58,6 +61,12 @@ spec:
               value: production
             - name: MAINTENANCE_MODE
               value: "false"
+            # Server-side chain proxy + /api/node-status use these when rpc.akt.dev is blocked.
+            # Use RPC/REST your pods can reach (test with node -e fetch... from the pod).
+            - name: DEFAULT_RPC_NODE_URL_MAINNET
+              value: "https://rpc.akashnet.net"
+            - name: DEFAULT_REST_API_NODE_URL_MAINNET
+              value: "https://api.akashnet.net"
           readinessProbe:
             httpGet:
               path: /

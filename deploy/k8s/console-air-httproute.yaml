@@ -1,0 +1,40 @@
+# Gateway API on akash-gateway.
+#
+# DNS: air.akash.network → Gateway ADDRESS (kubectl get gateway -n akash-gateway akash-gateway)
+#
+# Single parentRef, no sectionName — routes attach to all matching listeners on the Gateway.
+#
+# Prereqs:
+#   kubectl apply -f deploy/k8s/console-air-referencegrant.yaml
+#   kubectl apply -f deploy/k8s/console-air-certificate.yaml
+#   (gateway listener https-console-air on akash-gateway references console-air-tls secret)
+#
+# Apply:
+#   kubectl apply -f deploy/k8s/console-air-httproute.yaml
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: console-air
+  namespace: console-air
+  labels:
+    app.kubernetes.io/name: console-air
+spec:
+  hostnames:
+    - air.akash.network
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: akash-gateway
+      namespace: akash-gateway
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: console-air
+          port: 80
+          weight: 1

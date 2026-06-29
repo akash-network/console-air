@@ -23,7 +23,12 @@ RUN --mount=type=cache,target=/root/.npm \
 # 6 GB gives plenty of headroom. If your Docker daemon's overall memory
 # allocation is smaller (e.g. the default 2 GB on Docker Desktop), raise
 # it to at least ~8 GB or the build will be OOM-killed by the runtime.
+# LIMIT_NEXT_CPUS=1 (see next.config.js) avoids parallel page-data workers
+# multiplying memory use during `next build` in constrained environments (CI, Docker Desktop).
 ENV NODE_OPTIONS=--max-old-space-size=6144
+ENV LIMIT_NEXT_CPUS=1
+ARG NEXT_PUBLIC_APP_URL=https://air.akash.network
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
 # Next.js produces a standalone bundle at apps/deploy-web/.next/standalone/
 RUN npm run build
