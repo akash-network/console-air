@@ -42,6 +42,13 @@ describe("sdlGenerator", () => {
       expect(parsed.services["web"].params).toBeUndefined();
     });
 
+    it("does not emit a tee/type placement attribute (the chain SDK derives it from params.tee)", () => {
+      const result = generateSdl([createLogCollectorService({ title: "web", image: "nginx:latest", params: { tee: "cpu-gpu" } })]);
+      const parsed = yaml.load(result) as { profiles: { placement: Record<string, { attributes?: Record<string, string> }> } };
+
+      expect(parsed.profiles.placement.dcloud.attributes?.["tee/type"]).toBeUndefined();
+    });
+
     it("preserves the command verbatim without forcing a sh -c wrapper", () => {
       const result = generateSdl([createLogCollectorService({ title: "web", image: "nginx:latest", command: { command: "bash\n-lc", arg: "./run.sh" } })]);
       const parsed = yaml.load(result) as { services: Record<string, { command?: unknown; args?: unknown }> };

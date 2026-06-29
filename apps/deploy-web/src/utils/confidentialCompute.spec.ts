@@ -5,6 +5,7 @@ import type { DeploymentGroup } from "@src/types/deployment";
 import { fromBase64 } from "@src/utils/encoding";
 import {
   ATTESTATION_NONCE_BYTES,
+  buildFormTeeCarveout,
   computeSidecarCarveout,
   formatTeeTypeLabel,
   generateAttestationNonce,
@@ -242,6 +243,50 @@ describe(getTeeResourceCarveouts.name, () => {
   it("returns an empty array for a nullish group", () => {
     expect(getTeeResourceCarveouts(undefined)).toEqual([]);
     expect(getTeeResourceCarveouts(null)).toEqual([]);
+  });
+});
+
+describe(buildFormTeeCarveout.name, () => {
+  it("converts whole-core CPU to millicores and the requested memory unit to bytes", () => {
+    const result = buildFormTeeCarveout({ id: "svc-1", cpu: 0.5, ram: 256, ramUnit: "Mi", count: 1, gpu: 0, teeType: "cpu" });
+    expect(result).toEqual({
+      id: "svc-1",
+      teeType: "cpu",
+      count: 1,
+      gpuUnits: 0,
+      requested: { cpu: 500, memory: 256 * MIB },
+      reserved: { cpu: 100, memory: 64 * MIB },
+      container: { cpu: 400, memory: 192 * MIB }
+    });
+  });
+
+  it("supports every builder memory unit suffix (Mi, Gi, MB, GB)", () => {
+    expect(buildFormTeeCarveout({ id: "1", cpu: 1, ram: 1, ramUnit: "Gi", count: 1, teeType: "cpu" }).requested.memory).toBe(1024 ** 3);
+    expect(buildFormTeeCarveout({ id: "1", cpu: 1, ram: 1, ramUnit: "Mi", count: 1, teeType: "cpu" }).requested.memory).toBe(1024 ** 2);
+    expect(buildFormTeeCarveout({ id: "1", cpu: 1, ram: 1, ramUnit: "GB", count: 1, teeType: "cpu" }).requested.memory).toBe(1000 ** 3);
+    expect(buildFormTeeCarveout({ id: "1", cpu: 1, ram: 1, ramUnit: "MB", count: 1, teeType: "cpu" }).requested.memory).toBe(1000 ** 2);
+  });
+
+  it("falls back to Mi for an unknown memory unit", () => {
+    expect(buildFormTeeCarveout({ id: "1", cpu: 1, ram: 2, ramUnit: "bogus", count: 1, teeType: "cpu" }).requested.memory).toBe(2 * 1024 ** 2);
+  });
+
+  it("reserves 128Mi for the cpu-gpu type and carries the gpu units and replica count", () => {
+    const result = buildFormTeeCarveout({ id: "svc-2", cpu: 8, ram: 32, ramUnit: "Gi", count: 2, gpu: 1, teeType: "cpu-gpu" });
+    expect(result.reserved.memory).toBe(128 * MIB);
+    expect(result.gpuUnits).toBe(1);
+    expect(result.count).toBe(2);
+    expect(result.container).toEqual({ cpu: 7900, memory: 32 * GIB - 128 * MIB });
+  });
+
+  it("floors the container resources at the provider minimums when the declared budget is below the reservation", () => {
+    const result = buildFormTeeCarveout({ id: "svc-3", cpu: 0.05, ram: 32, ramUnit: "Mi", count: 1, teeType: "cpu" });
+    expect(result.container.cpu).toBe(MIN_PRIMARY_CPU_MILLICORES);
+    expect(result.container.memory).toBe(MIN_PRIMARY_MEMORY_BYTES);
+  });
+
+  it("defaults gpu units to 0 when no gpu is provided", () => {
+    expect(buildFormTeeCarveout({ id: "1", cpu: 1, ram: 1, ramUnit: "Gi", count: 1, teeType: "cpu" }).gpuUnits).toBe(0);
   });
 });
 
