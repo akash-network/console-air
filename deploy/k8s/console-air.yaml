@@ -49,7 +49,9 @@ spec:
           # — with k8s's default IfNotPresent imagePullPolicy, the kubelet
           # keeps whatever was cached on the node, so subsequent pushes won't
           # land until you also bump the tag.
-          image: ghcr.io/akash-network/console-air:1.0.2
+          # Bootstrap image for first apply only. Release CI sets the running tag
+          # via kubectl set image; do not bump this on each release.
+          image: ghcr.io/akash-network/console-air:0.0.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

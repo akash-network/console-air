@@ -5,8 +5,8 @@
 #   TS_OAUTH_CLIENT_ID   — Tailscale OAuth client ID (tag:ci)
 #   TS_OAUTH_SECRET      — Tailscale OAuth client secret
 #
-# Required repository variable:
-#   TAILSCALE_ORG        — tailnet name to verify after connecting (e.g. akash.network)
+# Required repository variable (optional):
+#   TAILSCALE_ORG        — tailnet name to verify after connecting
 #
 # Tailscale OAuth client setup (one-time):
 #   1. https://login.tailscale.com/admin/settings/oauth — create OAuth client
@@ -37,7 +37,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   validate:
@@ -69,6 +68,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ needs.validate.outputs.git_tag }}
+          persist-credentials: false
 
       - name: Use Node.js 22
         uses: actions/setup-node@49933ea5286caeca1862841beb114f2bd0b94551 # v4.4.0
@@ -97,6 +97,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ needs.validate.outputs.git_tag }}
+          persist-credentials: false
 
       - name: Use Node.js 22
         uses: actions/setup-node@49933ea5286caeca1862841beb114f2bd0b94551 # v4.4.0
@@ -118,10 +119,14 @@ jobs:
     needs: [validate, test, type-check]
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ needs.validate.outputs.git_tag }}
+          persist-credentials: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@b5ca514318bd6eac436dceed0f4a8bae86676380 # v3.10.0
