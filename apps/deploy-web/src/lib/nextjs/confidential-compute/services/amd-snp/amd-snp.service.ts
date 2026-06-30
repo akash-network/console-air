@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 
 import type { ConfidentialComputeConfig } from "../../config/env.config";
 import type { CpuReportVerdict } from "../../http-schemas/attestation.schema";
+import { isCertRevoked, isCrlExpired, parseAmdCrl, verifyCrlSignature } from "./amd-crl.parser";
 import type { AmdKdsClient } from "./amd-kds.client";
 import { splitPemChain } from "./amd-kds.client";
 import type { ParsedSnpReport } from "./snp-report.parser";
@@ -12,13 +13,15 @@ interface SnpCertChain {
   vcek: crypto.X509Certificate;
   ask: crypto.X509Certificate;
   ark: crypto.X509Certificate;
+  /** AMD product the chain belongs to, used to fetch the matching CRL; `null` when undeterminable. */
+  product: string | null;
 }
 
 /**
- * Verifies AMD SEV-SNP CPU attestation reports (authenticity-only): the report is signed by a VCEK that
- * chains ARK→ASK→VCEK to the AMD root, and its `report_data` is bound to the tenant nonce. Workload
- * measurement is NOT compared. Revocation (CRL) is NOT checked — `node:crypto` has no CRL support — so a
- * revoked-but-otherwise-genuine chip still reads `valid`; this is surfaced in the verdict detail.
+ * Verifies AMD SEV-SNP CPU attestation reports: the report is signed by a VCEK that chains
+ * ARK→ASK→VCEK to the AMD root, its `report_data` is bound to the tenant nonce, and the signing key is
+ * not revoked by AMD's published CRL. Workload measurement is NOT compared. When the CRL cannot be
+ * retrieved or verified the report is `unverifiable` (revocation unknown) rather than `valid`.
  *
  * Ported from apps/api with tsyringe DI replaced by constructor injection.
  */
@@ -52,21 +55,39 @@ export class AmdSnpService {
     const certChainValid = this.#verifyChain(chain);
     const signatureValid = certChainValid && this.#verifySignature(parsed, chain.vcek);
     const nonceMatch = this.#verifyNonce(parsed, input.nonce);
-    const checks = { certChainValid, signatureValid, nonceMatch };
+    const checks: NonNullable<CpuReportVerdict["checks"]> = { certChainValid, signatureValid, nonceMatch };
 
-    if (certChainValid && signatureValid && nonceMatch) {
+    if (!certChainValid || !signatureValid || !nonceMatch) {
+      const reasons: string[] = [];
+      if (!certChainValid) reasons.push("VCEK does not chain to the AMD root");
+      if (!signatureValid) reasons.push("report signature did not verify");
+      if (!nonceMatch) reasons.push("report is not bound to the request nonce");
+      return this.#verdict("invalid", `SEV-SNP verification failed: ${reasons.join("; ")}.`, checks);
+    }
+
+    // Authenticity is established; evaluate AMD revocation status before declaring the report valid.
+    const revocation = await this.#checkRevocation(chain);
+    if (revocation !== "unknown") checks.notRevoked = revocation === "not-revoked";
+
+    if (revocation === "revoked") {
       return this.#verdict(
-        "valid",
-        "Genuine AMD SEV-SNP hardware: VCEK chains to the AMD root, report signature and nonce verified. Revocation not checked.",
+        "invalid",
+        "AMD SEV-SNP signing key revoked: the chip is genuine and nonce-bound, but AMD has revoked the signing key in its certificate chain, withdrawing trust in the hardware.",
         checks
       );
     }
-
-    const reasons: string[] = [];
-    if (!certChainValid) reasons.push("VCEK does not chain to the AMD root");
-    if (!signatureValid) reasons.push("report signature did not verify");
-    if (!nonceMatch) reasons.push("report is not bound to the request nonce");
-    return this.#verdict("invalid", `SEV-SNP verification failed: ${reasons.join("; ")}.`, checks);
+    if (revocation === "unknown") {
+      return this.#verdict(
+        "unverifiable",
+        "Genuine AMD SEV-SNP hardware (VCEK chains to the AMD root, report signature and nonce verified), but revocation status is unknown: AMD's CRL could not be retrieved or verified.",
+        checks
+      );
+    }
+    return this.#verdict(
+      "valid",
+      "Genuine AMD SEV-SNP hardware: VCEK chains to the AMD root, report signature and nonce verified, and the signing key is not revoked by AMD's CRL.",
+      checks
+    );
   }
 
   async #resolveChain(parsed: ParsedSnpReport, certChainB64: string): Promise<SnpCertChain | null> {
@@ -84,7 +105,8 @@ export class AmdSnpService {
       return {
         vcek: new crypto.X509Certificate(vcekDer),
         ask: new crypto.X509Certificate(caChain.ask),
-        ark: new crypto.X509Certificate(caChain.ark)
+        ark: new crypto.X509Certificate(caChain.ark),
+        product
       };
     }
     return null;
@@ -98,10 +120,46 @@ export class AmdSnpService {
       const ask = ark && certs.find(cert => cert !== ark && safeVerify(cert, ark.publicKey));
       const vcek = ask && certs.find(cert => cert !== ark && cert !== ask && safeVerify(cert, ask.publicKey));
       if (!ark || !ask || !vcek) return null;
-      return { vcek, ask, ark };
+      return { vcek, ask, ark, product: this.#deriveProduct(ark) };
     } catch (error) {
       this.logger.error({ event: "AMD_SNP_EMBEDDED_CHAIN_PARSE_FAILED", error });
       return null;
+    }
+  }
+
+  /** Best-effort product from the ARK subject CN (`CN=ARK-Milan` → `Milan`), normalised to config spelling. */
+  #deriveProduct(ark: crypto.X509Certificate): string | null {
+    const match = ark.subject.match(/CN=ARK-([A-Za-z0-9]+)/i);
+    if (!match) return null;
+    const product = match[1];
+    return this.config.AMD_SNP_PRODUCTS.find(candidate => candidate.toLowerCase() === product.toLowerCase()) ?? product;
+  }
+
+  /**
+   * Checks the chain against AMD's published CRL. Returns `revoked` when the ASK or ARK serial is
+   * listed, `not-revoked` when a fresh, ARK-signed CRL omits them, and `unknown` (→ `unverifiable`)
+   * when the CRL can't be fetched, parsed, verified, or is stale — never a silent pass.
+   */
+  async #checkRevocation(chain: SnpCertChain): Promise<"not-revoked" | "revoked" | "unknown"> {
+    if (!chain.product) return "unknown";
+
+    let der: Buffer | null;
+    try {
+      der = await this.kdsClient.getCrl(chain.product);
+    } catch (error) {
+      this.logger.error({ event: "AMD_SNP_CRL_FETCH_FAILED", product: chain.product, error });
+      return "unknown";
+    }
+    if (!der) return "unknown";
+
+    try {
+      const crl = parseAmdCrl(der);
+      if (isCrlExpired(crl, new Date())) return "unknown";
+      if (!verifyCrlSignature(crl, chain.ark)) return "unknown";
+      return isCertRevoked(crl, chain.ask) || isCertRevoked(crl, chain.ark) ? "revoked" : "not-revoked";
+    } catch (error) {
+      this.logger.error({ event: "AMD_SNP_CRL_PARSE_FAILED", product: chain.product, error });
+      return "unknown";
     }
   }
 
