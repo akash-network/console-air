@@ -16,7 +16,6 @@ export function findLocalPackageDependencies(releaseablePackageDirectory) {
 
   const releaseablePackage = JSON.parse(fs.readFileSync(releaseablePackageJsonPath, "utf8"));
   const dependencies = {
-    "@akashnetwork/releaser": "*",
     ...releaseablePackage.dependencies,
     ...releaseablePackage.devDependencies
   };
