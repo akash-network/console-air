@@ -13,9 +13,32 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  # Gate the test jobs on whether app code actually changed (mirrors console's
+  # reusable-should-validate). Always runs on push to main; on PRs, runs only
+  # when relevant paths changed — so chore/docs/CI-only PRs skip the suite.
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ github.event_name != 'pull_request' || steps.filter.outputs.code == 'true' }}
+    steps:
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            code:
+              - 'apps/deploy-web/**'
+              - 'packages/**'
+              - 'package-lock.json'
+              - '.github/workflows/unit-tests.yml'
+
   test:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     name: Vitest
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -41,6 +64,8 @@ jobs:
         run: npm run test:unit -w apps/deploy-web
 
   type-check:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     name: TypeScript
     runs-on: ubuntu-latest
     timeout-minutes: 15
