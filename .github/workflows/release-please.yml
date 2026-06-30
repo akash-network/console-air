@@ -1,0 +1,44 @@
+# release-please maintains a release PR; merging it creates the vX.Y.Z tag and
+# dispatches release.yml to build + deploy to air.akash.network.
+#
+# Dispatch is explicit: a tag pushed by GITHUB_TOKEN won't trigger release.yml's
+# `push: tags` run (recursion guard), but workflow_dispatch is exempt.
+#
+# Prerequisite: repo Settings -> Actions must allow Actions to create PRs.
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    name: Maintain release PR and tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Trigger deploy
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+        run: gh workflow run release.yml -f tag="$TAG"
