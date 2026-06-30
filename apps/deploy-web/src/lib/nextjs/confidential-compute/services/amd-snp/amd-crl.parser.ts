@@ -83,7 +83,25 @@ function parseAsn1Time(tag: number, content: Buffer): Date {
   const rawYear = Number(match[1]);
   // RFC 5280: UTCTime years 00–49 map to 2000–2049, 50–99 to 1950–1999.
   const year = isUtc ? (rawYear < 50 ? 2000 + rawYear : 1900 + rawYear) : rawYear;
-  return new Date(Date.UTC(year, Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6])));
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  // Date.UTC silently rolls over out-of-range parts (month 13 → next year, day 00 → prior month);
+  // round-trip the components so such a time is rejected rather than yielding a plausible wrong date.
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day ||
+    date.getUTCHours() !== hour ||
+    date.getUTCMinutes() !== minute ||
+    date.getUTCSeconds() !== second
+  ) {
+    throw new AmdCrlParseError("Malformed CRL time");
+  }
+  return date;
 }
 
 /**

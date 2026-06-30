@@ -38,6 +38,13 @@ describe(parseAmdCrl.name, () => {
   it("throws AmdCrlParseError for bytes that are not a CRL", () => {
     expect(() => parseAmdCrl(Buffer.from("clearly not a DER-encoded CRL"))).toThrow(AmdCrlParseError);
   });
+
+  it("rejects an out-of-range time component instead of silently normalizing it", () => {
+    // Set nextUpdate's month to "13"; Date.UTC would roll it to next January without the round-trip guard.
+    const corrupted = withNextUpdateMonth(fixtures.cleanCrlDer, "13");
+
+    expect(() => parseAmdCrl(corrupted)).toThrow(AmdCrlParseError);
+  });
 });
 
 describe(verifyCrlSignature.name, () => {
@@ -148,4 +155,22 @@ function generateCrlFixtures() {
   const revokedCrlDer = toDer("crl_revoked.pem", "crl_revoked.der");
 
   return { dir, arkCert, askCert, cleanCrlDer, revokedCrlDer };
+}
+
+/** Returns a copy of the CRL DER with nextUpdate's 2-digit month overwritten, to forge an invalid time. */
+function withNextUpdateMonth(der: Buffer, month: string): Buffer {
+  const copy = Buffer.from(der);
+  let seen = 0;
+  for (let i = 0; i + 15 <= copy.length; i++) {
+    // UTCTime = tag 0x17, length 0x0d, then 13 ASCII bytes ending in 'Z' (0x5a): YYMMDDHHMMSSZ.
+    if (copy[i] === 0x17 && copy[i + 1] === 0x0d && copy[i + 14] === 0x5a) {
+      seen += 1;
+      // The first UTCTime is thisUpdate (skipped by the parser); the second is nextUpdate.
+      if (seen === 2) {
+        copy.write(month, i + 4, "latin1"); // month occupies the 3rd–4th content bytes
+        return copy;
+      }
+    }
+  }
+  throw new Error("nextUpdate UTCTime not found in fixture");
 }
