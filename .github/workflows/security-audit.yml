@@ -18,6 +18,9 @@ permissions:
 jobs:
   audit:
     name: npm audit
+    # Skip release-please PRs: deps are unchanged, and the daily cron + feature
+    # PR runs already cover the audit.
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

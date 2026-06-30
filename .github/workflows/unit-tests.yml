@@ -23,7 +23,9 @@ jobs:
     name: Detect changes
     runs-on: ubuntu-latest
     outputs:
-      run: ${{ github.event_name != 'pull_request' || steps.filter.outputs.code == 'true' }}
+      # Skip release-please PRs (release-please--*): they only bump
+      # version/changelog/lockfile, never app code.
+      run: ${{ !startsWith(github.head_ref, 'release-please--') && (github.event_name != 'pull_request' || steps.filter.outputs.code == 'true') }}
     steps:
       - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: filter
