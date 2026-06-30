@@ -1,10 +1,18 @@
 # release-please maintains a release PR; merging it creates the vX.Y.Z tag and
 # dispatches release.yml to build + deploy to air.akash.network.
 #
+# Authenticated as a GitHub App (not the default GITHUB_TOKEN) so the release PR
+# is authored by a trusted identity: this removes the "Approve and run" gate on
+# the PR's workflows and lets CI run on it automatically.
+#
 # Dispatch is explicit: a tag pushed by GITHUB_TOKEN won't trigger release.yml's
 # `push: tags` run (recursion guard), but workflow_dispatch is exempt.
 #
-# Prerequisite: repo Settings -> Actions must allow Actions to create PRs.
+# Prerequisites:
+#   - repo Settings -> Actions must allow Actions to create PRs
+#   - GitHub App installed on the repo with contents:write, pull-requests:write,
+#     issues:write and actions:write; its App ID in the RELEASE_BOT_APP_ID
+#     variable and its private key in the RELEASE_BOT_PRIVATE_KEY secret.
 name: release-please
 
 on:
@@ -22,23 +30,45 @@ jobs:
   release-please:
     name: Maintain release PR and tag
     runs-on: ubuntu-latest
+    # All write operations use scoped App tokens (see token steps below), so the
+    # default GITHUB_TOKEN needs no elevated scopes. The App installation must
+    # itself grant: contents:write, pull-requests:write, issues:write (labels)
+    # and actions:write (to dispatch release.yml).
     permissions:
-      contents: write
-      pull-requests: write
-      issues: write
-      actions: write
+      contents: read
     steps:
+      # Scope each token to least privilege: release-please only writes code,
+      # PRs and labels; the deploy dispatch only needs actions:write.
+      - name: Generate token for release-please
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        id: release-token
+        with:
+          app-id: ${{ vars.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.release-token.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      - name: Generate token for deploy dispatch
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        id: deploy-token
+        with:
+          app-id: ${{ vars.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          permission-actions: write
 
       - name: Trigger deploy
         if: ${{ steps.release.outputs.release_created }}
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.deploy-token.outputs.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ steps.release.outputs.tag_name }}
         run: gh workflow run release.yml -f tag="$TAG"
