@@ -358,7 +358,8 @@ export const ServiceSchema = z
             read: z.array(z.enum(["deployment", "logs"]))
           })
           .optional(),
-        // Preserved verbatim through the builder round-trip; not yet editable in the form UI.
+        // Editable in the builder via ConfidentialComputeControl. The `cpu-gpu` enclave is coupled to
+        // a GPU profile (profile.hasGpu) by the ServiceSchema refinement below.
         tee: z.enum(["cpu", "cpu-gpu"]).optional()
       })
       .optional()
@@ -369,6 +370,15 @@ export const ServiceSchema = z
     validateStorageAmount(data.profile.storage[0].size, data.profile.storage[0].unit, data.count, ctx);
     if (data.profile.hasGpu) {
       validateGpuAmount(data.profile.gpu as number, data.count, ctx);
+    }
+    // A cpu-gpu enclave needs GPU resources, so it requires a GPU profile on the same service.
+    if (data.params?.tee === "cpu-gpu" && !data.profile.hasGpu) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "CPU + GPU Confidential Compute requires a GPU profile on this service.",
+        path: ["params", "tee"],
+        fatal: true
+      });
     }
   });
 

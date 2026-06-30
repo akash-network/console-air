@@ -34,7 +34,7 @@ export const ConfidentialComputeControl: React.FunctionComponent<Props> = ({ ser
   const isEnabled = !!teeType;
   const hasGpu = !!currentService.profile.hasGpu;
   // A cpu-gpu enclave needs GPU resources; surface the mismatch (e.g. GPU removed after picking cpu-gpu) without
-  // rewriting the choice. The blocking validation + GPU coupling is CON-456.
+  // rewriting the choice. The deploy-blocking validation for this same condition lives in ServiceSchema (CON-456).
   const gpuMismatch = teeType === "cpu-gpu" && !hasGpu;
 
   const setTeeType = (next: TeeType | undefined) => {
