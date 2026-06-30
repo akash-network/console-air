@@ -12,12 +12,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Gate on whether app code actually changed (mirrors console's
+  # reusable-should-validate). Always runs on push to main; on PRs, runs only
+  # when relevant paths changed — so chore/docs/CI-only PRs skip e2e.
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      run: ${{ github.event_name != 'pull_request' || steps.filter.outputs.code == 'true' }}
+    steps:
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            code:
+              - 'apps/deploy-web/**'
+              - 'packages/**'
+              - 'package-lock.json'
+              - '.github/workflows/e2e.yml'
+
   playwright:
     name: Playwright self-custody
+    needs: changes
     # Skip on PRs from forks: repository secrets (TEST_WALLET_MNEMONIC) are not
     # exposed to fork-triggered workflow runs, so the job can't run. Coverage
-    # still happens on push to main and via workflow_dispatch.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # still happens on push to main and via workflow_dispatch. Also skipped on
+    # PRs that touch no app code (the `changes` gate above).
+    if: needs.changes.outputs.run == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
