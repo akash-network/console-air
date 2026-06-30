@@ -102,6 +102,12 @@ describe(isCrlExpired.name, () => {
 
     expect(isCrlExpired(crl, new Date((crl.nextUpdate as Date).getTime() - 1000))).toBe(false);
   });
+
+  it("treats a CRL with no freshness bound as expired (fails closed)", () => {
+    const crl = parseAmdCrl(fixtures.cleanCrlDer);
+
+    expect(isCrlExpired({ ...crl, nextUpdate: null }, new Date())).toBe(true);
+  });
 });
 
 function generateCrlFixtures() {

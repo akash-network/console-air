@@ -101,7 +101,8 @@ describe(AmdSnpService.name, () => {
     const nonce = crypto.randomBytes(64);
     const report = buildSignedReport(nonce);
     const embedded = Buffer.from([chain.vcekPem, chain.askPem, chain.arkPem].join("\n")).toString("base64");
-    const { service, kdsClient } = setup({ withKds: true });
+    // The embedded chain's ARK CN is ARK-Milan, so the service derives "Milan" and the CRL must match that.
+    const { service, kdsClient } = setup({ withKds: true, resolvingProduct: "Milan" });
 
     const verdict = await service.verify({ report: report.toString("base64"), certChain: embedded, nonce: nonce.toString("base64") });
 
@@ -146,7 +147,8 @@ describe(AmdSnpService.name, () => {
     const resolving = input.resolvingProduct ?? "Genoa";
     kdsClient.getCaChain.mockImplementation(async product => (input.withKds && product === resolving ? { ask: chain.askPem, ark: chain.arkPem } : null));
     kdsClient.getVcek.mockImplementation(async product => (input.withKds && product === resolving ? chain.vcekDer : null));
-    kdsClient.getCrl.mockImplementation(async () => {
+    kdsClient.getCrl.mockImplementation(async product => {
+      if (!input.withKds || product !== resolving) return null;
       if (input.crl === "missing") return null;
       if (input.crl === "error") throw new Error("AMD KDS unavailable");
       return input.crl === "revoked" ? revokedCrlDer : cleanCrlDer;

@@ -74,23 +74,16 @@ export function normalizeSerial(hex: string): string {
 }
 
 function parseAsn1Time(tag: number, content: Buffer): Date {
-  const text = content.toString("latin1").trim();
   const isUtc = tag === TAG.UTC_TIME;
-  let pos = isUtc ? 2 : 4;
-  const twoDigitYear = Number(text.slice(0, 2));
+  // RFC 5280 requires the fully-specified Zulu form: YYMMDDHHMMSSZ / YYYYMMDDHHMMSSZ. Reject anything
+  // else so a malformed time fails closed (the caller treats a missing freshness bound as unverifiable).
+  const pattern = isUtc ? /^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})Z$/ : /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})Z$/;
+  const match = pattern.exec(content.toString("latin1"));
+  if (!match) throw new AmdCrlParseError("Malformed CRL time");
+  const rawYear = Number(match[1]);
   // RFC 5280: UTCTime years 00–49 map to 2000–2049, 50–99 to 1950–1999.
-  const year = isUtc ? (twoDigitYear < 50 ? 2000 + twoDigitYear : 1900 + twoDigitYear) : Number(text.slice(0, 4));
-  const read2 = () => {
-    const value = Number(text.slice(pos, pos + 2));
-    pos += 2;
-    return value;
-  };
-  const month = read2();
-  const day = read2();
-  const hour = read2();
-  const minute = read2();
-  const second = Number(text.slice(pos, pos + 2)) || 0;
-  return new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  const year = isUtc ? (rawYear < 50 ? 2000 + rawYear : 1900 + rawYear) : rawYear;
+  return new Date(Date.UTC(year, Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6])));
 }
 
 /**
@@ -170,7 +163,10 @@ export function isCertRevoked(crl: ParsedAmdCrl, cert: crypto.X509Certificate): 
   return crl.revokedSerials.has(normalizeSerial(cert.serialNumber));
 }
 
-/** True when `now` is at or past the CRL's `nextUpdate` (a CRL without `nextUpdate` never expires). */
+/**
+ * True when the CRL has no usable freshness bound (missing/invalid `nextUpdate`) or `now` is at/past
+ * it. Fails closed: a CRL without a verifiable `nextUpdate` is treated as expired (→ revocation unknown).
+ */
 export function isCrlExpired(crl: ParsedAmdCrl, now: Date): boolean {
-  return crl.nextUpdate !== null && now.getTime() >= crl.nextUpdate.getTime();
+  return crl.nextUpdate === null || !Number.isFinite(crl.nextUpdate.getTime()) || now.getTime() >= crl.nextUpdate.getTime();
 }
