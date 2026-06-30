@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/akash-network/console-air/compare/v1.1.0...v1.1.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* **release:** sync deploy-web version with root release ([#48](https://github.com/akash-network/console-air/issues/48)) ([910b31c](https://github.com/akash-network/console-air/commit/910b31c15e30fc197d937b3250cbcca11af8685e))
+
 ## [1.1.0](https://github.com/akash-network/console-air/compare/v1.0.4...v1.1.0) (2026-06-30)
 
 
