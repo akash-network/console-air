@@ -6,7 +6,14 @@
     ".": {
       "package-name": "@akashnetwork/console-air",
       "release-type": "node",
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "apps/deploy-web/package.json",
+          "jsonpath": "$.version"
+        }
+      ]
     }
   }
 }
