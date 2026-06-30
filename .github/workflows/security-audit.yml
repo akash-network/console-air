@@ -18,6 +18,9 @@ permissions:
 jobs:
   audit:
     name: npm audit
+    # Skip release-please's bot PRs (deps unchanged; daily cron + feature PRs
+    # cover the audit). Require the bot author so the branch name can't spoof it.
+    if: ${{ !(startsWith(github.head_ref, 'release-please--') && github.event.pull_request.user.login == 'github-actions[bot]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
