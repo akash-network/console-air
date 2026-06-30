@@ -30,31 +30,45 @@ jobs:
   release-please:
     name: Maintain release PR and tag
     runs-on: ubuntu-latest
-    # All write operations now use the App token (see app-token step), so the
+    # All write operations use scoped App tokens (see token steps below), so the
     # default GITHUB_TOKEN needs no elevated scopes. The App installation must
     # itself grant: contents:write, pull-requests:write, issues:write (labels)
     # and actions:write (to dispatch release.yml).
     permissions:
       contents: read
     steps:
-      - name: Generate GitHub App token
+      # Scope each token to least privilege: release-please only writes code,
+      # PRs and labels; the deploy dispatch only needs actions:write.
+      - name: Generate token for release-please
         uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
-        id: app-token
+        id: release-token
         with:
           app-id: ${{ vars.RELEASE_BOT_APP_ID }}
           private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
 
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.release-token.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      - name: Generate token for deploy dispatch
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        id: deploy-token
+        with:
+          app-id: ${{ vars.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          permission-actions: write
 
       - name: Trigger deploy
         if: ${{ steps.release.outputs.release_created }}
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.deploy-token.outputs.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ steps.release.outputs.tag_name }}
         run: gh workflow run release.yml -f tag="$TAG"
