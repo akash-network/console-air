@@ -29,6 +29,10 @@ ENV NODE_OPTIONS=--max-old-space-size=6144
 ENV LIMIT_NEXT_CPUS=1
 ARG NEXT_PUBLIC_APP_URL=https://air.akash.network
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+# Version is computed from the git tag at release time and injected here so the UI
+# reflects the released version (package.json's version is not bumped per release).
+ARG NEXT_PUBLIC_APP_VERSION
+ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 
 # Next.js produces a standalone bundle at apps/deploy-web/.next/standalone/
 RUN npm run build

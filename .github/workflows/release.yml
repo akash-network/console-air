@@ -1,4 +1,10 @@
-# Release console-air on version tags (v*).
+# PR-less release: on every push to main, compute the next version from conventional
+# commits, cut the git tag + GitHub Release directly (no release PR), then build and
+# deploy to air.akash.network. Authenticated with the default GITHUB_TOKEN — no App/bot.
+#
+# Version is computed by packages/releaser (conventional-recommended-bump). It is
+# deterministic per commit SHA and emits an empty tag for non-releasing commits
+# (chore/docs/test/style/ci/build), which short-circuits the whole pipeline.
 #
 # Required repository secrets:
 #   KUBECONFIG           — base64-encoded kubeconfig YAML; API server reachable over Tailscale
@@ -15,59 +21,97 @@
 #   4. Store client ID + secret in the GitHub secrets above
 #
 # ACLs: ensure tag:ci can reach the cluster API (port 6443) on the tailnet.
-#
-# Trigger: git push origin v1.0.2
-# Image:   ghcr.io/akash-network/console-air:1.0.2
 name: release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
+    paths:
+      - "apps/deploy-web/**"
+      - "packages/**"
+      - "package-lock.json"
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Tag to release (e.g. v1.0.2)"
-        required: true
+      sha:
+        description: "Commit SHA to release (defaults to the triggering commit)"
+        required: false
         type: string
 
 concurrency:
   group: release
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  validate:
-    name: Validate tag
+  version:
+    name: Compute version
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
-      version: ${{ steps.parse.outputs.version }}
-      git_tag: ${{ steps.parse.outputs.git_tag }}
+      git_tag: ${{ steps.bump.outputs.git_tag }}
+      version: ${{ steps.bump.outputs.version }}
+      sha: ${{ steps.bump.outputs.sha }}
+      changelog: ${{ steps.bump.outputs.changelog }}
     steps:
-      - name: Parse and validate tag
-        id: parse
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history + tags for conventional-commit analysis
+          persist-credentials: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install releaser
+        working-directory: packages/releaser
+        run: npm ci --ignore-scripts
+
+      - name: Compute next version
+        id: bump
         env:
-          REF_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          SHA: ${{ inputs.sha || github.sha }}
+          REPO_URL: https://github.com/${{ github.repository }}
         run: |
-          tag="$REF_TAG"
-          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
-            echo "::error::Tag must match vX.Y.Z (e.g. v1.0.2). Got: $tag"
-            exit 1
+          out=$(node packages/releaser/recommended-bump.js \
+            --tag-prefix="v" \
+            --path "apps/deploy-web" \
+            --repo-url "$REPO_URL" \
+            --target-sha "$SHA")
+
+          tag=""
+          version=""
+          changelog=""
+          if [ -n "$out" ]; then
+            echo "$out" | jq .
+            tag=$(echo "$out" | jq -r '.nextTag // empty')
+            version=$(echo "$out" | jq -r '.nextVersion // empty')
+            changelog=$(echo "$out" | jq -r '.changelog // empty')
+          else
+            echo "No releasable commit for $SHA — skipping release."
           fi
-          echo "git_tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "sha=$SHA"
+            echo "git_tag=$tag"
+            echo "version=$version"
+            echo "changelog<<RELEASER_EOF"
+            echo "$changelog"
+            echo "RELEASER_EOF"
+          } >> "$GITHUB_OUTPUT"
 
   test:
     name: Vitest
-    needs: validate
+    needs: version
+    if: needs.version.outputs.git_tag != ''
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.validate.outputs.git_tag }}
+          ref: ${{ needs.version.outputs.sha }}
           persist-credentials: false
 
       - name: Use Node.js 22
@@ -90,13 +134,14 @@ jobs:
 
   type-check:
     name: TypeScript
-    needs: validate
+    needs: version
+    if: needs.version.outputs.git_tag != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.validate.outputs.git_tag }}
+          ref: ${{ needs.version.outputs.sha }}
           persist-credentials: false
 
       - name: Use Node.js 22
@@ -114,9 +159,41 @@ jobs:
       - name: Type-check deploy-web
         run: npm run type-check -w apps/deploy-web
 
+  release:
+    name: Create release
+    needs: [version, test, type-check]
+    if: needs.version.outputs.git_tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Create tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          GIT_TAG: ${{ needs.version.outputs.git_tag }}
+          SHA: ${{ needs.version.outputs.sha }}
+          CHANGELOG: ${{ needs.version.outputs.changelog }}
+        run: |
+          if gh release view "$GIT_TAG" >/dev/null 2>&1; then
+            echo "Release $GIT_TAG already exists — skipping creation."
+            exit 0
+          fi
+          gh release create "$GIT_TAG" \
+            --target "$SHA" \
+            --title "$GIT_TAG" \
+            --notes "$CHANGELOG"
+
   build:
     name: Build and push image
-    needs: [validate, test, type-check]
+    needs: [version, release]
+    if: needs.version.outputs.git_tag != ''
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -125,7 +202,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.validate.outputs.git_tag }}
+          ref: ${{ needs.version.outputs.sha }}
           persist-credentials: false
 
       - name: Set up Docker Buildx
@@ -144,15 +221,17 @@ jobs:
           context: .
           file: apps/deploy-web/Dockerfile
           push: true
-          tags: ghcr.io/akash-network/console-air:${{ needs.validate.outputs.version }}
+          tags: ghcr.io/akash-network/console-air:${{ needs.version.outputs.version }}
           build-args: |
             NEXT_PUBLIC_APP_URL=https://air.akash.network
+            NEXT_PUBLIC_APP_VERSION=${{ needs.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   deploy:
     name: Deploy to production
-    needs: [validate, build]
+    needs: [version, build]
+    if: needs.version.outputs.git_tag != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -186,7 +265,7 @@ jobs:
       - name: Roll out
         env:
           KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
-          IMAGE: ghcr.io/akash-network/console-air:${{ needs.validate.outputs.version }}
+          IMAGE: ghcr.io/akash-network/console-air:${{ needs.version.outputs.version }}
         run: |
           mkdir -p ~/.kube
           printf '%s' "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config

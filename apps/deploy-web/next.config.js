@@ -40,7 +40,9 @@ const nextConfig = {
   reactStrictMode: false,
   productionBrowserSourceMaps: true,
   env: {
-    NEXT_PUBLIC_APP_VERSION: version
+    // Releases inject the computed version at build time (see .github/workflows/release.yml).
+    // package.json's version is a local-dev fallback only — it is not bumped per release.
+    NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION || version
   },
   compiler: {
     styledComponents: true
