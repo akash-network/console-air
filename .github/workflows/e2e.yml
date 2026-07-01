@@ -21,10 +21,7 @@ jobs:
     permissions:
       pull-requests: read
     outputs:
-      # Skip release-please's bot PRs: they only bump version/changelog/lockfile,
-      # never app code. Gate on the trusted bot author AND the branch prefix so a
-      # release-please--* branch name alone can't spoof the skip.
-      run: ${{ !(startsWith(github.head_ref, 'release-please--') && github.event.pull_request.user.login == 'github-actions[bot]') && (github.event_name != 'pull_request' || steps.filter.outputs.code == 'true') }}
+      run: ${{ github.event_name != 'pull_request' || steps.filter.outputs.code == 'true' }}
     steps:
       - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: filter
