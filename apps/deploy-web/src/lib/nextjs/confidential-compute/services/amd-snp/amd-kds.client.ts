@@ -11,6 +11,8 @@ export interface AmdCaChain {
 }
 
 const CA_CHAIN_TTL_MS = 24 * 60 * 60 * 1000;
+// CRLs rotate more often than the CA chain; the verifier additionally enforces the CRL's own nextUpdate.
+const CRL_TTL_MS = 6 * 60 * 60 * 1000;
 
 /**
  * Thin client over the AMD Key Distribution Service (https://kdsintf.amd.com). It fetches the per-chip VCEK
@@ -22,6 +24,7 @@ const CA_CHAIN_TTL_MS = 24 * 60 * 60 * 1000;
  */
 export class AmdKdsClient {
   readonly #caChainCache = new Map<string, { value: AmdCaChain | null; expiresAt: number }>();
+  readonly #crlCache = new Map<string, { value: Buffer | null; expiresAt: number }>();
 
   constructor(
     private readonly httpClient: HttpClient,
@@ -65,8 +68,31 @@ export class AmdKdsClient {
     }
   }
 
+  /**
+   * Fetches the DER-encoded CRL for a product (cached). Returns `null` when the product has no CRL
+   * (404); transport errors propagate so the verifier treats revocation status as unknown.
+   */
+  async getCrl(product: string): Promise<Buffer | null> {
+    const cached = this.#crlCache.get(product);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+    try {
+      const response = await this.httpClient.get<ArrayBuffer>(`/vcek/v1/${product}/crl`, { responseType: "arraybuffer" });
+      return this.#cacheCrl(product, Buffer.from(response.data));
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 404) return this.#cacheCrl(product, null);
+      this.logger.error({ event: "AMD_KDS_CRL_FETCH_FAILED", product, error });
+      throw error;
+    }
+  }
+
   #cacheCaChain(product: string, value: AmdCaChain | null): AmdCaChain | null {
     this.#caChainCache.set(product, { value, expiresAt: Date.now() + CA_CHAIN_TTL_MS });
+    return value;
+  }
+
+  #cacheCrl(product: string, value: Buffer | null): Buffer | null {
+    this.#crlCache.set(product, { value, expiresAt: Date.now() + CRL_TTL_MS });
     return value;
   }
 }
