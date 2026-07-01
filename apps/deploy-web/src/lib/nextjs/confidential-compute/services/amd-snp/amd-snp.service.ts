@@ -55,7 +55,7 @@ export class AmdSnpService {
     const certChainValid = this.#verifyChain(chain);
     const signatureValid = certChainValid && this.#verifySignature(parsed, chain.vcek);
     const nonceMatch = this.#verifyNonce(parsed, input.nonce);
-    const checks: NonNullable<CpuReportVerdict["checks"]> = { certChainValid, signatureValid, nonceMatch };
+    const checks = { certChainValid, signatureValid, nonceMatch };
 
     if (!certChainValid || !signatureValid || !nonceMatch) {
       const reasons: string[] = [];
@@ -67,15 +67,6 @@ export class AmdSnpService {
 
     // Authenticity is established; evaluate AMD revocation status before declaring the report valid.
     const revocation = await this.#checkRevocation(chain);
-    if (revocation !== "unknown") checks.notRevoked = revocation === "not-revoked";
-
-    if (revocation === "revoked") {
-      return this.#verdict(
-        "invalid",
-        "AMD SEV-SNP signing key revoked: the chip is genuine and nonce-bound, but AMD has revoked the signing key in its certificate chain, withdrawing trust in the hardware.",
-        checks
-      );
-    }
     if (revocation === "unknown") {
       return this.#verdict(
         "unverifiable",
@@ -83,10 +74,19 @@ export class AmdSnpService {
         checks
       );
     }
+
+    const revocationChecks = { ...checks, notRevoked: revocation === "not-revoked" };
+    if (revocation === "revoked") {
+      return this.#verdict(
+        "invalid",
+        "AMD SEV-SNP signing key revoked: the chip is genuine and nonce-bound, but AMD has revoked the signing key in its certificate chain, withdrawing trust in the hardware.",
+        revocationChecks
+      );
+    }
     return this.#verdict(
       "valid",
       "Genuine AMD SEV-SNP hardware: VCEK chains to the AMD root, report signature and nonce verified, and the signing key is not revoked by AMD's CRL.",
-      checks
+      revocationChecks
     );
   }
 

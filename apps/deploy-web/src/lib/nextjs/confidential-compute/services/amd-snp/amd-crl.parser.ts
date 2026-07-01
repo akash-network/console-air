@@ -10,7 +10,7 @@ import crypto from "node:crypto";
  * `node:crypto` exposes no CRL type, so we walk the `CertificateList` structure (RFC 5280 §5.1) by
  * hand: capture the signed `tbsCertList` bytes, the signature, `nextUpdate`, and the revoked serials,
  * then verify the signature with `node:crypto`. AMD signs these CRLs with RSA-PSS/SHA-384 (the ARK is
- * RSA-4096); {@link verifyCrlSignature} also accepts an ECDSA issuer so test fixtures need not be RSA.
+ * RSA-4096), which is the only algorithm {@link verifyCrlSignature} accepts.
  */
 
 export interface ParsedAmdCrl {
@@ -159,17 +159,13 @@ export function parseAmdCrl(der: Buffer): ParsedAmdCrl {
 }
 
 /**
- * Verifies the CRL signature against the issuer (the ARK). AMD uses RSA-PSS/SHA-384; an ECDSA issuer
- * is also accepted (its signature is the DER form node expects by default). Any error → `false`, so an
- * unverifiable CRL is never trusted.
+ * Verifies the CRL signature against the issuer (the ARK). AMD always signs with RSA-PSS/SHA-384, so
+ * that is the only accepted algorithm; any other issuer key or any error → `false`, so an unverifiable
+ * CRL is never trusted.
  */
 export function verifyCrlSignature(crl: ParsedAmdCrl, issuer: crypto.X509Certificate): boolean {
   try {
-    const key = issuer.publicKey;
-    const options =
-      key.asymmetricKeyType === "rsa"
-        ? { key, padding: crypto.constants.RSA_PKCS1_PSS_PADDING, saltLength: crypto.constants.RSA_PSS_SALTLEN_AUTO }
-        : { key };
+    const options = { key: issuer.publicKey, padding: crypto.constants.RSA_PKCS1_PSS_PADDING, saltLength: crypto.constants.RSA_PSS_SALTLEN_AUTO };
     return crypto.verify("sha384", crl.tbsDer, options, crl.signature);
   } catch {
     return false;
@@ -186,5 +182,7 @@ export function isCertRevoked(crl: ParsedAmdCrl, cert: crypto.X509Certificate): 
  * it. Fails closed: a CRL without a verifiable `nextUpdate` is treated as expired (→ revocation unknown).
  */
 export function isCrlExpired(crl: ParsedAmdCrl, now: Date): boolean {
-  return crl.nextUpdate === null || !Number.isFinite(crl.nextUpdate.getTime()) || now.getTime() >= crl.nextUpdate.getTime();
+  // `parseAmdCrl` only ever yields `null` or a valid Date here (parseAsn1Time throws on a bad time),
+  // so there is no non-finite case to guard against.
+  return crl.nextUpdate === null || now.getTime() >= crl.nextUpdate.getTime();
 }

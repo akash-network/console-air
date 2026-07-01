@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process";
 import { X509Certificate } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { AmdCrlParseError, isCertRevoked, isCrlExpired, normalizeSerial, parseAmdCrl, verifyCrlSignature } from "./amd-crl.parser";
+import { generateCrl } from "./amd-crl.test-fixtures";
 
 // A real RSA ARK→ASK chain plus RSA-PSS CRLs (clean and one revoking the ASK), generated once via
 // openssl to mirror AMD KDS — which issues RSA-4096 ARKs and signs its CRLs with RSA-PSS/SHA-384.
@@ -131,28 +132,8 @@ function generateCrlFixtures() {
   const arkCert = new X509Certificate(readFileSync(join(dir, "ark.pem")));
   const askCert = new X509Certificate(readFileSync(join(dir, "ask.pem")));
 
-  // Minimal CA scaffold so `openssl ca -gencrl` can emit a CRL signed by the ARK.
-  writeFileSync(
-    join(dir, "ca.cnf"),
-    ["[ca]", "default_ca = myca", "[myca]", "database = index.txt", "crlnumber = crlnumber", "certificate = ark.pem", "private_key = ark.key", "default_md = sha384", "default_crl_days = 30", ""].join("\n")
-  );
-  // AMD signs CRLs with RSA-PSS; force the same here so the parser is exercised against the real algorithm.
-  const gencrl = (out: string) => ossl(["ca", "-config", "ca.cnf", "-gencrl", "-out", out, "-sigopt", "rsa_padding_mode:pss", "-sigopt", "rsa_pss_saltlen:digest"]);
-  const toDer = (pem: string, der: string) => {
-    ossl(["crl", "-in", pem, "-outform", "DER", "-out", der]);
-    return readFileSync(join(dir, der));
-  };
-
-  writeFileSync(join(dir, "index.txt"), "");
-  writeFileSync(join(dir, "crlnumber"), "1000\n");
-  gencrl("crl_clean.pem");
-  const cleanCrlDer = toDer("crl_clean.pem", "crl_clean.der");
-
-  // An index entry marks the ASK serial revoked; openssl emits it into the regenerated CRL.
-  writeFileSync(join(dir, "index.txt"), `R\t350101000000Z\t240101000000Z\t${askCert.serialNumber}\tunknown\t/CN=SEV-Milan\n`);
-  writeFileSync(join(dir, "crlnumber"), "1001\n");
-  gencrl("crl_revoked.pem");
-  const revokedCrlDer = toDer("crl_revoked.pem", "crl_revoked.der");
+  const cleanCrlDer = generateCrl(dir, []);
+  const revokedCrlDer = generateCrl(dir, [askCert.serialNumber]);
 
   return { dir, arkCert, askCert, cleanCrlDer, revokedCrlDer };
 }
