@@ -18,6 +18,17 @@ type Props = {
   children?: ReactNode;
 };
 
+// Parse a proxy numeric input. An empty or non-numeric value becomes undefined;
+// otherwise the raw number is kept (including decimals) so the schema's `.int()`
+// rule surfaces a validation error, rather than `parseInt` silently truncating
+// e.g. `1.5` to `1`.
+const parseProxyNumberInput = (value: string): number | undefined => {
+  const trimmed = value.trim();
+  if (trimmed === "") return undefined;
+  const parsed = Number(trimmed);
+  return Number.isNaN(parsed) ? undefined : parsed;
+};
+
 export const HttpOptionsFormControl: React.FunctionComponent<Props> = ({ control, serviceIndex, exposeIndex, services }) => {
   const currentService = services[serviceIndex];
 
@@ -242,7 +253,7 @@ export const HttpOptionsFormControl: React.FunctionComponent<Props> = ({ control
                 }
                 className="mb-2 w-full"
                 value={field.value ?? ""}
-                onChange={event => field.onChange(event.target.value === "" ? undefined : parseInt(event.target.value))}
+                onChange={event => field.onChange(parseProxyNumberInput(event.target.value))}
                 min={0}
               />
             )}
@@ -264,7 +275,7 @@ export const HttpOptionsFormControl: React.FunctionComponent<Props> = ({ control
                 }
                 className="mb-2 w-full"
                 value={field.value ?? ""}
-                onChange={event => field.onChange(event.target.value === "" ? undefined : parseInt(event.target.value))}
+                onChange={event => field.onChange(parseProxyNumberInput(event.target.value))}
                 min={1}
               />
             )}
@@ -286,7 +297,7 @@ export const HttpOptionsFormControl: React.FunctionComponent<Props> = ({ control
                 }
                 className="mb-2 w-full"
                 value={field.value ?? ""}
-                onChange={event => field.onChange(event.target.value === "" ? undefined : parseInt(event.target.value))}
+                onChange={event => field.onChange(parseProxyNumberInput(event.target.value))}
                 min={1}
               />
             )}
@@ -308,7 +319,7 @@ export const HttpOptionsFormControl: React.FunctionComponent<Props> = ({ control
                 }
                 className="mb-2 w-full"
                 value={field.value ?? ""}
-                onChange={event => field.onChange(event.target.value === "" ? undefined : parseInt(event.target.value))}
+                onChange={event => field.onChange(parseProxyNumberInput(event.target.value))}
                 min={0}
               />
             )}
@@ -330,7 +341,7 @@ export const HttpOptionsFormControl: React.FunctionComponent<Props> = ({ control
                 }
                 className="mb-2 w-full"
                 value={field.value ?? ""}
-                onChange={event => field.onChange(event.target.value === "" ? undefined : parseInt(event.target.value))}
+                onChange={event => field.onChange(parseProxyNumberInput(event.target.value))}
                 min={0}
               />
             )}
