@@ -277,13 +277,15 @@ const getProto = (expose: ExposeType) => {
 function buildHttpProxyYaml(proxy?: ServiceExposeHTTPProxyType): Record<string, number | boolean> | undefined {
   if (!proxy) return undefined;
 
+  // Emit every explicitly-defined field, so a defined 0 or false is preserved
+  // rather than silently dropped.
   const result: Record<string, number | boolean> = {};
-  if (proxy.bufferingDisable) result.buffering_disable = true;
-  if (proxy.bufferSize) result.buffer_size = proxy.bufferSize;
-  if (proxy.buffersNumber) result.buffers_number = proxy.buffersNumber;
-  if (proxy.buffersSize) result.buffers_size = proxy.buffersSize;
-  if (proxy.busyBuffersSize) result.busy_buffers_size = proxy.busyBuffersSize;
-  if (proxy.connectTimeout) result.connect_timeout = proxy.connectTimeout;
+  if (proxy.bufferingDisable !== undefined) result.buffering_disable = proxy.bufferingDisable;
+  if (proxy.bufferSize !== undefined) result.buffer_size = proxy.bufferSize;
+  if (proxy.buffersNumber !== undefined) result.buffers_number = proxy.buffersNumber;
+  if (proxy.buffersSize !== undefined) result.buffers_size = proxy.buffersSize;
+  if (proxy.busyBuffersSize !== undefined) result.busy_buffers_size = proxy.busyBuffersSize;
+  if (proxy.connectTimeout !== undefined) result.connect_timeout = proxy.connectTimeout;
 
   return Object.keys(result).length ? result : undefined;
 }

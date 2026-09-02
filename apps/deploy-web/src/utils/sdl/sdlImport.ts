@@ -188,7 +188,9 @@ function importHttpProxy(proxy: any): ServiceExposeHTTPProxyType | undefined {
     connectTimeout: proxy.connect_timeout
   };
 
-  const hasAny = Object.values(mapped).some(value => value !== undefined && value !== false && value !== 0);
+  // Retain the proxy block when any field is explicitly defined. A defined 0 or
+  // false is a real value (not "unset"), so it must survive the round-trip.
+  const hasAny = Object.values(mapped).some(value => value !== undefined);
   return hasAny ? mapped : undefined;
 }
 

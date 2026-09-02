@@ -70,8 +70,18 @@ export const ServiceExposeHTTPProxySchema = z
   .object({
     bufferingDisable: z.boolean().optional(),
     bufferSize: z.number().int().min(0).max(PROXY_BUFFER_SIZE_MAX, { message: `Buffer size must be at most ${PROXY_BUFFER_SIZE_MAX} bytes.` }).optional(),
-    buffersNumber: z.number().int().min(0).max(PROXY_BUFFERS_NUMBER_MAX, { message: `Buffers number must be at most ${PROXY_BUFFERS_NUMBER_MAX}.` }).optional(),
-    buffersSize: z.number().int().min(0).max(PROXY_BUFFERS_SIZE_MAX, { message: `Buffers size must be at most ${PROXY_BUFFERS_SIZE_MAX} bytes.` }).optional(),
+    buffersNumber: z
+      .number()
+      .int()
+      .min(1, { message: "Buffers number must be at least 1." })
+      .max(PROXY_BUFFERS_NUMBER_MAX, { message: `Buffers number must be at most ${PROXY_BUFFERS_NUMBER_MAX}.` })
+      .optional(),
+    buffersSize: z
+      .number()
+      .int()
+      .min(1, { message: "Buffers size must be at least 1 byte." })
+      .max(PROXY_BUFFERS_SIZE_MAX, { message: `Buffers size must be at most ${PROXY_BUFFERS_SIZE_MAX} bytes.` })
+      .optional(),
     busyBuffersSize: z
       .number()
       .int()
@@ -81,8 +91,8 @@ export const ServiceExposeHTTPProxySchema = z
     connectTimeout: z.number().int().min(0).optional()
   })
   .superRefine((proxy, ctx) => {
-    const hasNumber = !!proxy.buffersNumber;
-    const hasSize = !!proxy.buffersSize;
+    const hasNumber = proxy.buffersNumber !== undefined;
+    const hasSize = proxy.buffersSize !== undefined;
     if (hasNumber !== hasSize) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

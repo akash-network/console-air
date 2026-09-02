@@ -265,7 +265,7 @@ export const HttpOptionsFormControl: React.FunctionComponent<Props> = ({ control
                 className="mb-2 w-full"
                 value={field.value ?? ""}
                 onChange={event => field.onChange(event.target.value === "" ? undefined : parseInt(event.target.value))}
-                min={0}
+                min={1}
               />
             )}
           />
@@ -287,7 +287,7 @@ export const HttpOptionsFormControl: React.FunctionComponent<Props> = ({ control
                 className="mb-2 w-full"
                 value={field.value ?? ""}
                 onChange={event => field.onChange(event.target.value === "" ? undefined : parseInt(event.target.value))}
-                min={0}
+                min={1}
               />
             )}
           />
