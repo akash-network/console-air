@@ -277,10 +277,11 @@ const getProto = (expose: ExposeType) => {
 function buildHttpProxyYaml(proxy?: ServiceExposeHTTPProxyType): Record<string, number | boolean> | undefined {
   if (!proxy) return undefined;
 
-  // Emit every explicitly-defined field, so a defined 0 or false is preserved
+  // buffering_disable false is the default (buffering on), so emit it only when true.
+  // Every other field is emitted when explicitly defined, so a defined 0 is preserved
   // rather than silently dropped.
   const result: Record<string, number | boolean> = {};
-  if (proxy.bufferingDisable !== undefined) result.buffering_disable = proxy.bufferingDisable;
+  if (proxy.bufferingDisable) result.buffering_disable = true;
   if (proxy.bufferSize !== undefined) result.buffer_size = proxy.bufferSize;
   if (proxy.buffersNumber !== undefined) result.buffers_number = proxy.buffersNumber;
   if (proxy.buffersSize !== undefined) result.buffers_size = proxy.buffersSize;
