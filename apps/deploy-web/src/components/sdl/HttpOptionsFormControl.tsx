@@ -18,6 +18,17 @@ type Props = {
   children?: ReactNode;
 };
 
+// Parse a proxy numeric input. An empty or non-numeric value becomes undefined;
+// otherwise the raw number is kept (including decimals) so the schema's `.int()`
+// rule surfaces a validation error, rather than `parseInt` silently truncating
+// e.g. `1.5` to `1`.
+const parseProxyNumberInput = (value: string): number | undefined => {
+  const trimmed = value.trim();
+  if (trimmed === "") return undefined;
+  const parsed = Number(trimmed);
+  return Number.isNaN(parsed) ? undefined : parsed;
+};
+
 export const HttpOptionsFormControl: React.FunctionComponent<Props> = ({ control, serviceIndex, exposeIndex, services }) => {
   const currentService = services[serviceIndex];
 
@@ -196,6 +207,143 @@ export const HttpOptionsFormControl: React.FunctionComponent<Props> = ({ control
                   emptyIndicator={<p className="text-md text-center leading-10 text-gray-600 dark:text-gray-400">no results found.</p>}
                 />
               </FormItem>
+            )}
+          />
+
+          <div className="mb-2 mt-4 flex items-center">
+            <strong className="text-sm">Proxy</strong>
+            <CustomTooltip title="Optional proxy buffering and tuning. Buffers Number and Buffers Size must be set together.">
+              <InfoCircle className="ml-2 text-xs text-muted-foreground" />
+            </CustomTooltip>
+          </div>
+
+          <Controller
+            control={control}
+            name={`services.${serviceIndex}.expose.${exposeIndex}.httpOptions.proxy.bufferingDisable`}
+            render={({ field }) => (
+              <div className="mb-2 flex items-center space-x-2">
+                <Checkbox
+                  id={`proxy-buffering-disable-${serviceIndex}-${exposeIndex}`}
+                  checked={!!field.value}
+                  onCheckedChange={field.onChange}
+                />
+                <label
+                  htmlFor={`proxy-buffering-disable-${serviceIndex}-${exposeIndex}`}
+                  className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Disable Buffering
+                </label>
+              </div>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name={`services.${serviceIndex}.expose.${exposeIndex}.httpOptions.proxy.bufferSize`}
+            render={({ field }) => (
+              <FormInput
+                type="number"
+                label={
+                  <div className="inline-flex items-center">
+                    Buffer Size
+                    <CustomTooltip title="Per-request proxy buffer size in bytes.">
+                      <InfoCircle className="ml-2 text-xs text-muted-foreground" />
+                    </CustomTooltip>
+                  </div>
+                }
+                className="mb-2 w-full"
+                value={field.value ?? ""}
+                onChange={event => field.onChange(parseProxyNumberInput(event.target.value))}
+                min={0}
+              />
+            )}
+          />
+
+          <FormField
+            control={control}
+            name={`services.${serviceIndex}.expose.${exposeIndex}.httpOptions.proxy.buffersNumber`}
+            render={({ field }) => (
+              <FormInput
+                type="number"
+                label={
+                  <div className="inline-flex items-center">
+                    Buffers Number
+                    <CustomTooltip title="Number of proxy buffers. Must be set together with Buffers Size.">
+                      <InfoCircle className="ml-2 text-xs text-muted-foreground" />
+                    </CustomTooltip>
+                  </div>
+                }
+                className="mb-2 w-full"
+                value={field.value ?? ""}
+                onChange={event => field.onChange(parseProxyNumberInput(event.target.value))}
+                min={1}
+              />
+            )}
+          />
+
+          <FormField
+            control={control}
+            name={`services.${serviceIndex}.expose.${exposeIndex}.httpOptions.proxy.buffersSize`}
+            render={({ field }) => (
+              <FormInput
+                type="number"
+                label={
+                  <div className="inline-flex items-center">
+                    Buffers Size
+                    <CustomTooltip title="Size of each proxy buffer in bytes. Must be set together with Buffers Number.">
+                      <InfoCircle className="ml-2 text-xs text-muted-foreground" />
+                    </CustomTooltip>
+                  </div>
+                }
+                className="mb-2 w-full"
+                value={field.value ?? ""}
+                onChange={event => field.onChange(parseProxyNumberInput(event.target.value))}
+                min={1}
+              />
+            )}
+          />
+
+          <FormField
+            control={control}
+            name={`services.${serviceIndex}.expose.${exposeIndex}.httpOptions.proxy.busyBuffersSize`}
+            render={({ field }) => (
+              <FormInput
+                type="number"
+                label={
+                  <div className="inline-flex items-center">
+                    Busy Buffers Size
+                    <CustomTooltip title="Proxy busy buffers size in bytes.">
+                      <InfoCircle className="ml-2 text-xs text-muted-foreground" />
+                    </CustomTooltip>
+                  </div>
+                }
+                className="mb-2 w-full"
+                value={field.value ?? ""}
+                onChange={event => field.onChange(parseProxyNumberInput(event.target.value))}
+                min={0}
+              />
+            )}
+          />
+
+          <FormField
+            control={control}
+            name={`services.${serviceIndex}.expose.${exposeIndex}.httpOptions.proxy.connectTimeout`}
+            render={({ field }) => (
+              <FormInput
+                type="number"
+                label={
+                  <div className="inline-flex items-center">
+                    Connect Timeout
+                    <CustomTooltip title="Proxy connect timeout in milliseconds.">
+                      <InfoCircle className="ml-2 text-xs text-muted-foreground" />
+                    </CustomTooltip>
+                  </div>
+                }
+                className="mb-2 w-full"
+                value={field.value ?? ""}
+                onChange={event => field.onChange(parseProxyNumberInput(event.target.value))}
+                min={0}
+              />
             )}
           />
         </>

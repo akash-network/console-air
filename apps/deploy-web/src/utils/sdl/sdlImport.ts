@@ -1,7 +1,7 @@
 import yaml from "js-yaml";
 import { nanoid } from "nanoid";
 
-import type { ExposeType, ProfileGpuModelType, ServiceType } from "@src/types";
+import type { ExposeType, ProfileGpuModelType, ServiceExposeHTTPProxyType, ServiceType } from "@src/types";
 import { CustomValidationError } from "../deploymentData";
 import { capitalizeFirstLetter } from "../stringUtils";
 import { defaultHttpOptions } from "./data";
@@ -104,7 +104,8 @@ export const importSimpleSdl = (yamlStr: string) => {
             sendTimeout: expose.http_options?.send_timeout ?? defaultHttpOptions.sendTimeout,
             nextCases: expose.http_options?.next_cases ?? defaultHttpOptions.nextCases,
             nextTries: expose.http_options?.next_tries ?? defaultHttpOptions.nextTries,
-            nextTimeout: expose.http_options?.next_timeout ?? defaultHttpOptions.nextTimeout
+            nextTimeout: expose.http_options?.next_timeout ?? defaultHttpOptions.nextTimeout,
+            proxy: importHttpProxy(expose.http_options?.proxy)
           }
         };
 
@@ -174,6 +175,24 @@ const getResourceUnit = (size: string): string => {
   const match = size.match(/[a-zA-Z]+/g);
   return match ? capitalizeFirstLetter(match[0]) : "";
 };
+
+function importHttpProxy(proxy: any): ServiceExposeHTTPProxyType | undefined {
+  if (!proxy || typeof proxy !== "object") return undefined;
+
+  const mapped = {
+    bufferingDisable: proxy.buffering_disable,
+    bufferSize: proxy.buffer_size,
+    buffersNumber: proxy.buffers_number,
+    buffersSize: proxy.buffers_size,
+    busyBuffersSize: proxy.busy_buffers_size,
+    connectTimeout: proxy.connect_timeout
+  };
+
+  // Retain the proxy block when any field is explicitly defined. A defined 0 or
+  // false is a real value (not "unset"), so it must survive the round-trip.
+  const hasAny = Object.values(mapped).some(value => value !== undefined);
+  return hasAny ? mapped : undefined;
+}
 
 const getGpuModels = (vendor: { [key: string]: { model: string; ram: string; interface: string }[] }): ProfileGpuModelType[] => {
   const models: ProfileGpuModelType[] = [];

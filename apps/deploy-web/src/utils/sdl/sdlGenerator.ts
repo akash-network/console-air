@@ -1,7 +1,7 @@
 import yaml from "js-yaml";
 
 import { isLogCollectorService } from "@src/components/sdl/LogCollectorControl/LogCollectorControl";
-import type { ExposeType, ProfileGpuModelType, ServiceType } from "@src/types";
+import type { ExposeType, ProfileGpuModelType, ServiceExposeHTTPProxyType, ServiceType } from "@src/types";
 import { defaultHttpOptions } from "./data";
 
 /**
@@ -58,7 +58,7 @@ export const generateSdl = (services: ServiceType[], region?: string) => {
 
         // HTTP Options
         if (e.hasCustomHttpOptions) {
-          _expose["http_options"] = {
+          const httpOptions: Record<string, any> = {
             max_body_size: e.httpOptions?.maxBodySize ?? defaultHttpOptions.maxBodySize,
             read_timeout: e.httpOptions?.readTimeout ?? defaultHttpOptions.readTimeout,
             send_timeout: e.httpOptions?.sendTimeout ?? defaultHttpOptions.sendTimeout,
@@ -66,6 +66,10 @@ export const generateSdl = (services: ServiceType[], region?: string) => {
             next_tries: e.httpOptions?.nextTries ?? defaultHttpOptions.nextTries,
             next_timeout: e.httpOptions?.nextTimeout ?? defaultHttpOptions.nextTimeout
           };
+          _expose["http_options"] = httpOptions;
+
+          const proxy = buildHttpProxyYaml(e.httpOptions?.proxy);
+          if (proxy) httpOptions.proxy = proxy;
         }
 
         return _expose;
@@ -269,3 +273,20 @@ const getProto = (expose: ExposeType) => {
     return expose.proto;
   }
 };
+
+function buildHttpProxyYaml(proxy?: ServiceExposeHTTPProxyType): Record<string, number | boolean> | undefined {
+  if (!proxy) return undefined;
+
+  // buffering_disable false is the default (buffering on), so emit it only when true.
+  // Every other field is emitted when explicitly defined, so a defined 0 is preserved
+  // rather than silently dropped.
+  const result: Record<string, number | boolean> = {};
+  if (proxy.bufferingDisable) result.buffering_disable = true;
+  if (proxy.bufferSize !== undefined) result.buffer_size = proxy.bufferSize;
+  if (proxy.buffersNumber !== undefined) result.buffers_number = proxy.buffersNumber;
+  if (proxy.buffersSize !== undefined) result.buffers_size = proxy.buffersSize;
+  if (proxy.busyBuffersSize !== undefined) result.busy_buffers_size = proxy.busyBuffersSize;
+  if (proxy.connectTimeout !== undefined) result.connect_timeout = proxy.connectTimeout;
+
+  return Object.keys(result).length ? result : undefined;
+}
