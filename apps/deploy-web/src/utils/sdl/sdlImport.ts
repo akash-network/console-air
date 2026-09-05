@@ -1,7 +1,8 @@
 import yaml from "js-yaml";
 import { nanoid } from "nanoid";
 
-import type { ExposeType, ProfileGpuModelType, ServiceExposeHTTPProxyType, ServiceType } from "@src/types";
+import type { CpuArchType, ExposeType, ProfileGpuModelType, ServiceExposeHTTPProxyType, ServiceType } from "@src/types";
+import { CPU_ARCHITECTURES } from "@src/types";
 import { CustomValidationError } from "../deploymentData";
 import { capitalizeFirstLetter } from "../stringUtils";
 import { defaultHttpOptions } from "./data";
@@ -42,6 +43,7 @@ export const importSimpleSdl = (yamlStr: string) => {
       // Service compute profile
       service.profile = {
         cpu: compute.resources.cpu.units,
+        arch: getCpuArch(compute.resources.cpu.attributes),
         gpu: compute.resources.gpu ? compute.resources.gpu.units : 0,
         gpuModels: compute.resources.gpu ? getGpuModels(compute.resources.gpu.attributes.vendor) : [],
         hasGpu: !!compute.resources.gpu,
@@ -193,6 +195,19 @@ function importHttpProxy(proxy: any): ServiceExposeHTTPProxyType | undefined {
   const hasAny = Object.values(mapped).some(value => value !== undefined);
   return hasAny ? mapped : undefined;
 }
+
+/** Leaves the architecture off when the SDL sets none so a round trip through the builder keeps writing no CPU attributes at all. */
+const getCpuArch = (attributes: { arch?: unknown } | undefined): CpuArchType | undefined => {
+  const arch = attributes?.arch;
+  if (arch === undefined || arch === null) return undefined;
+
+  const supported = CPU_ARCHITECTURES.find(candidate => candidate === arch);
+  if (!supported) {
+    throw new CustomValidationError(`Unsupported CPU architecture "${arch}". Expected ${CPU_ARCHITECTURES.join(" or ")}.`);
+  }
+
+  return supported;
+};
 
 const getGpuModels = (vendor: { [key: string]: { model: string; ram: string; interface: string }[] }): ProfileGpuModelType[] => {
   const models: ProfileGpuModelType[] = [];
