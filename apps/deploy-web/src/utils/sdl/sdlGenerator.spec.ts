@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { LOG_COLLECTOR_IMAGE } from "@src/config/log-collector.config";
 import type { ServiceType } from "@src/types";
+import { getManifest } from "../deploymentData/v1beta3";
 import { buildCommand, generateSdl } from "./sdlGenerator";
 
 describe("sdlGenerator", () => {
@@ -119,4 +120,56 @@ describe("sdlGenerator", () => {
       expect(buildCommand(" foo \n bar ")).toEqual(["foo", "bar"]);
     });
   });
+});
+
+describe("generateSdl cpu architecture", () => {
+  it("writes no cpu attributes when the service names no architecture", () => {
+    const parsed = yaml.load(generateSdl([buildArchService(undefined)])) as ComputeYaml;
+
+    expect(parsed.profiles.compute.web.resources.cpu).toEqual({ units: 0.5 });
+  });
+
+  it.each(["amd64", "arm64"] as const)("writes %s as a cpu arch attribute", arch => {
+    const parsed = yaml.load(generateSdl([buildArchService(arch)])) as ComputeYaml;
+
+    expect(parsed.profiles.compute.web.resources.cpu).toEqual({ units: 0.5, attributes: { arch } });
+  });
+
+  it("produces byte-identical SDL to a service with no architecture field at all", () => {
+    const withUndefined = generateSdl([buildArchService(undefined)]);
+    const withoutTheField = generateSdl([buildArchService()]);
+
+    expect(withUndefined).toBe(withoutTheField);
+  });
+
+  it("carries the architecture onto the manifest group spec a provider matches on", () => {
+    const groups = getManifest(yaml.load(generateSdl([buildArchService("arm64")])), false);
+
+    expect(groups[0].services[0].resources.cpu?.attributes).toEqual([{ key: "arch", value: "arm64" }]);
+  });
+
+  type ComputeYaml = { profiles: { compute: Record<string, { resources: { cpu: { units: number; attributes?: { arch: string } } } }> } };
+
+  function buildArchService(...arch: ["amd64" | "arm64" | undefined] | []): ServiceType {
+    return {
+      id: "web-id",
+      title: "web",
+      image: "nginx:latest",
+      profile: {
+        cpu: 0.5,
+        ...(arch.length ? { arch: arch[0] } : {}),
+        ram: 512,
+        ramUnit: "Mi",
+        storage: [{ size: 512, unit: "Mi", isPersistent: false }],
+        hasGpu: false,
+        gpu: 0
+      },
+      expose: [{ port: 80, as: 80, global: true, to: [] }],
+      placement: {
+        name: "dcloud",
+        pricing: { amount: 1000, denom: "uakt" }
+      },
+      count: 1
+    } as ServiceType;
+  }
 });

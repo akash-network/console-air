@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ServiceSchema } from "./sdlBuilder";
+import { ProfileSchema, ServiceSchema } from "./sdlBuilder";
 
 describe("ServiceSchema", () => {
   it("validates a minimal valid service", () => {
@@ -55,6 +55,33 @@ describe("ServiceSchema", () => {
       },
       count: 1,
       ...(overrides?.params ? { params: overrides.params } : {})
+    };
+  }
+});
+
+describe("ProfileSchema cpu architecture", () => {
+  it.each(["amd64", "arm64"])("accepts %s", arch => {
+    expect(ProfileSchema.safeParse(buildProfile(arch)).success).toBe(true);
+  });
+
+  it("accepts a profile that names no architecture", () => {
+    expect(ProfileSchema.safeParse(buildProfile(undefined)).success).toBe(true);
+  });
+
+  it("rejects an architecture outside the SDL enum", () => {
+    const result = ProfileSchema.safeParse(buildProfile("sparc64"));
+
+    expect(result.success).toBe(false);
+    expect((result as { error: { issues: { path: (string | number)[] }[] } }).error.issues).toContainEqual(expect.objectContaining({ path: ["arch"] }));
+  });
+
+  function buildProfile(arch: string | undefined) {
+    return {
+      cpu: 0.5,
+      ...(arch === undefined ? {} : { arch }),
+      ram: 512,
+      ramUnit: "Mi",
+      storage: [{ size: 512, unit: "Mi", isPersistent: false }]
     };
   }
 });

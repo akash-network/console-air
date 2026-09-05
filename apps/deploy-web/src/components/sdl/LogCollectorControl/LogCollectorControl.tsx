@@ -171,7 +171,7 @@ export const LogCollectorControl: FC<Props> = ({ serviceIndex, dependencies: d =
           <DatadogEnvConfig serviceIndex={logCollectorServiceIndex} />
 
           <div className="mt-4">
-            <CpuFormControl control={control} currentService={logCollectorService} serviceIndex={logCollectorServiceIndex} />
+            <CpuFormControl control={control} currentService={logCollectorService} serviceIndex={logCollectorServiceIndex} showArchitecture={false} />
           </div>
 
           <div className="mt-4">
