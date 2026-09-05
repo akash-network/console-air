@@ -1,23 +1,51 @@
 "use client";
 import type { ReactNode } from "react";
 import type { Control } from "react-hook-form";
+import { Controller } from "react-hook-form";
 import { MdSpeed } from "react-icons/md";
-import { CustomTooltip, FormField, FormItem, FormMessage, Input, Slider } from "@akashnetwork/ui/components";
+import {
+  CustomTooltip,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Slider
+} from "@akashnetwork/ui/components";
 import { cn } from "@akashnetwork/ui/utils";
 import { InfoCircle } from "iconoir-react";
 
-import type { SdlBuilderFormValuesType, ServiceType } from "@src/types";
+import { useServices } from "@src/context/ServicesProvider";
+import type { CpuArchType, SdlBuilderFormValuesType, ServiceType } from "@src/types";
 import { validationConfig } from "@src/utils/akash/units";
 import { FormPaper } from "./FormPaper";
+
+/** Stands in for "write no architecture at all", which a Select cannot express as an empty string. */
+const DEFAULT_ARCH_OPTION = "default";
+
+const ARCH_OPTIONS: readonly { value: CpuArchType | typeof DEFAULT_ARCH_OPTION; label: string }[] = [
+  { value: DEFAULT_ARCH_OPTION, label: "Default (amd64)" },
+  { value: "amd64", label: "amd64" },
+  { value: "arm64", label: "arm64" }
+];
 
 type Props = {
   serviceIndex: number;
   children?: ReactNode;
   control: Control<SdlBuilderFormValuesType, any>;
   currentService: ServiceType;
+  showArchitecture?: boolean;
 };
 
-export const CpuFormControl: React.FunctionComponent<Props> = ({ control, serviceIndex }) => {
+export const CpuFormControl: React.FunctionComponent<Props> = ({ control, serviceIndex, showArchitecture = true }) => {
+  const { analyticsService } = useServices();
+
   return (
     <FormField
       control={control}
@@ -72,6 +100,40 @@ export const CpuFormControl: React.FunctionComponent<Props> = ({ control, servic
             </div>
 
             <FormMessage className={cn({ "pt-2": !!fieldState.error })} />
+
+            {showArchitecture && (
+              <div className="pt-4">
+                <FormLabel htmlFor={`cpu-arch-${serviceIndex}`} className="mb-2 block">
+                  CPU Architecture
+                </FormLabel>
+                <Controller
+                  control={control}
+                  name={`services.${serviceIndex}.profile.arch`}
+                  render={({ field: archField }) => (
+                    <Select
+                      value={archField.value ?? DEFAULT_ARCH_OPTION}
+                      onValueChange={value => {
+                        archField.onChange(value === DEFAULT_ARCH_OPTION ? undefined : value);
+                        analyticsService.track("configure_cpu_arch_changed", { category: "sdl_builder", arch: value });
+                      }}
+                    >
+                      <SelectTrigger id={`cpu-arch-${serviceIndex}`} className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {ARCH_OPTIONS.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            )}
           </FormItem>
         </FormPaper>
       )}
