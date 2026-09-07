@@ -124,13 +124,37 @@ describe(NewDeploymentData.name, () => {
     expect(result.reclamation).toBeUndefined();
   });
 
-  function setup(input: { version: "2.0" | "2.1"; reclamation?: { min_window: string } }) {
+  it("writes the requested cpu architecture into the on-chain group spec", async () => {
+    const { chainApiHttpClient, sdl } = setup({ version: "2.0", cpuAttributes: { arch: "arm64" } });
+
+    const result = await NewDeploymentData(chainApiHttpClient, sdl, "12345", "akash1abc", 5);
+
+    expect(result.groups[0].resources[0].resource?.cpu?.attributes).toEqual([{ key: "arch", value: "arm64" }]);
+  });
+
+  it("writes no cpu attributes into the group spec when the SDL requests no architecture", async () => {
+    const { chainApiHttpClient, sdl } = setup({ version: "2.0" });
+
+    const result = await NewDeploymentData(chainApiHttpClient, sdl, "12345", "akash1abc", 5);
+
+    expect(result.groups[0].resources[0].resource?.cpu?.attributes).toEqual([]);
+  });
+
+  function setup(input: { version: "2.0" | "2.1"; reclamation?: { min_window: string }; cpuAttributes?: { arch: string } }) {
     const chainApiHttpClient = mock<HttpClient>();
     const sdl = yaml.dump({
       version: input.version,
       services: { web: { image: "nginx", expose: [{ port: 80, as: 80, to: [{ global: true }] }] } },
       profiles: {
-        compute: { web: { resources: { cpu: { units: 0.5 }, memory: { size: "512Mi" }, storage: { size: "1Gi" } } } },
+        compute: {
+          web: {
+            resources: {
+              cpu: { units: 0.5, ...(input.cpuAttributes ? { attributes: input.cpuAttributes } : {}) },
+              memory: { size: "512Mi" },
+              storage: { size: "1Gi" }
+            }
+          }
+        },
         placement: { dcloud: { pricing: { web: { denom: "uakt", amount: 1000 } } } }
       },
       deployment: { web: { dcloud: { profile: "web", count: 1 } } },
