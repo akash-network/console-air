@@ -19,7 +19,9 @@ describe("ServiceSchema", () => {
     });
 
     it("accepts a cpu-gpu enclave when the service has a GPU profile", () => {
-      const result = ServiceSchema.safeParse(buildService({ profile: { hasGpu: true, gpu: 1, gpuModels: [{ vendor: "nvidia" }] }, params: { tee: "cpu-gpu" } }));
+      const result = ServiceSchema.safeParse(
+        buildService({ profile: { hasGpu: true, gpu: 1, gpuModels: [{ vendor: "nvidia" }] }, params: { tee: "cpu-gpu" } })
+      );
 
       expect(result.success).toBe(true);
     });
@@ -59,29 +61,31 @@ describe("ServiceSchema", () => {
   }
 });
 
-describe("ProfileSchema cpu architecture", () => {
-  it.each(["amd64", "arm64"])("accepts %s", arch => {
-    expect(ProfileSchema.safeParse(buildProfile(arch)).success).toBe(true);
+describe("ProfileSchema", () => {
+  describe("cpu architecture", () => {
+    it.each(["amd64", "arm64"])("accepts %s", arch => {
+      expect(ProfileSchema.safeParse(buildProfile(arch)).success).toBe(true);
+    });
+
+    it("accepts a profile that names no architecture", () => {
+      expect(ProfileSchema.safeParse(buildProfile(undefined)).success).toBe(true);
+    });
+
+    it("rejects an architecture outside the SDL enum", () => {
+      const result = ProfileSchema.safeParse(buildProfile("sparc64"));
+
+      expect(result.success).toBe(false);
+      expect((result as { error: { issues: { path: (string | number)[] }[] } }).error.issues).toContainEqual(expect.objectContaining({ path: ["arch"] }));
+    });
+
+    function buildProfile(arch: string | undefined) {
+      return {
+        cpu: 0.5,
+        ...(arch === undefined ? {} : { arch }),
+        ram: 512,
+        ramUnit: "Mi",
+        storage: [{ size: 512, unit: "Mi", isPersistent: false }]
+      };
+    }
   });
-
-  it("accepts a profile that names no architecture", () => {
-    expect(ProfileSchema.safeParse(buildProfile(undefined)).success).toBe(true);
-  });
-
-  it("rejects an architecture outside the SDL enum", () => {
-    const result = ProfileSchema.safeParse(buildProfile("sparc64"));
-
-    expect(result.success).toBe(false);
-    expect((result as { error: { issues: { path: (string | number)[] }[] } }).error.issues).toContainEqual(expect.objectContaining({ path: ["arch"] }));
-  });
-
-  function buildProfile(arch: string | undefined) {
-    return {
-      cpu: 0.5,
-      ...(arch === undefined ? {} : { arch }),
-      ram: 512,
-      ramUnit: "Mi",
-      storage: [{ size: 512, unit: "Mi", isPersistent: false }]
-    };
-  }
 });
