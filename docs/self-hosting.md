@@ -51,7 +51,7 @@ You can also override RPC and API endpoints at runtime from inside the UI via **
 
 ### Mobile wallet support (optional)
 
-Browser-extension wallets (Keplr, Cosmostation, MetaMask Snap) work out of the box. Mobile wallets connect via WalletConnect, which requires a project ID issued by Reown Cloud — without one, the mobile wallet entries appear disabled in the connect modal.
+Browser-extension wallets (Keplr, Cosmostation, MetaMask Snap, Vultisig) work out of the box. Mobile wallets connect via WalletConnect, which requires a project ID issued by Reown Cloud — without one, the mobile wallet entries appear disabled in the connect modal.
 
 If you want mobile wallet support on your instance:
 

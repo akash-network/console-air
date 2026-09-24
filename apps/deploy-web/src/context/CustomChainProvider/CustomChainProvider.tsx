@@ -10,6 +10,7 @@ import { wallets as metamask } from "@cosmos-kit/cosmos-extension-metamask";
 import { wallets as cosmostation } from "@cosmos-kit/cosmostation-extension";
 import { wallets as keplr } from "@cosmos-kit/keplr";
 import { ChainProvider, useChain } from "@cosmos-kit/react";
+import { wallets as vultisig } from "@cosmos-kit/vultisig-extension";
 import { useAtom } from "jotai";
 import { useSnackbar } from "notistack";
 
@@ -22,7 +23,7 @@ import { registry } from "@src/utils/customRegistry";
 import { COSMOS_KIT_CURRENT_WALLET_KEY, pruneStalePersistedWallet } from "./cosmosKitStorage";
 
 const walletConnectProjectId = browserEnvConfig.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID;
-const wallets = [...keplr, ...cosmostation, ...metamask];
+const wallets = [...keplr, ...cosmostation, ...metamask, ...vultisig];
 
 pruneStalePersistedWallet(wallets, walletConnectProjectId);
 
