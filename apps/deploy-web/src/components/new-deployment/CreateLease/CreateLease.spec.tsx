@@ -61,6 +61,17 @@ describe(CreateLease.name, () => {
     });
   });
 
+  it("hands its bid groups a bidder the provider list leaves out", async () => {
+    const BidGroup = vi.fn(ComponentMock);
+    const unlistedProvider = buildProvider();
+    const bids = [buildRpcBid({ bid: { id: { gseq: 1, provider: unlistedProvider.owner }, state: "open" } })];
+    setup({ BidGroup, bids, providers: [buildProvider()], providersByAddress: [unlistedProvider] });
+
+    await vi.waitFor(() => {
+      expect(BidGroup).toHaveBeenLastCalledWith(expect.objectContaining({ providers: expect.arrayContaining([unlistedProvider]) }), {});
+    });
+  });
+
   it("groups bids by gseq", async () => {
     const BidGroup = vi.fn(ComponentMock);
     const bids = [
@@ -217,6 +228,27 @@ describe(CreateLease.name, () => {
       });
     });
 
+    it("submits manifest to a bidder the provider list leaves out", async () => {
+      const signAndBroadcastTx = vi.fn().mockResolvedValue({ code: 0 });
+      const sendManifest = vi.fn();
+      const localCert: CertificateContextType["localCert"] = {
+        certPem: "certPem",
+        keyPem: "keyPem",
+        address: "akash123"
+      };
+      const selectedProvider = buildProvider();
+      await setupLeaseCreation({ signAndBroadcastTx, sendManifest, localCert, selectedProvider, isSelectedProviderUnlisted: true });
+
+      await vi.waitFor(() => {
+        expect(screen.getByRole<HTMLButtonElement>("button", { name: /Accept Bid/i })).not.toBeDisabled();
+      });
+
+      await userEvent.click(screen.getByRole<HTMLButtonElement>("button", { name: /Accept Bid/i }));
+      await vi.waitFor(() => {
+        expect(sendManifest).toHaveBeenCalledWith(selectedProvider, expect.any(Array), expect.objectContaining({ dseq: "123" }));
+      });
+    });
+
     it("creates new certificate on lease creation if there is no local certificate or it is expired", async () => {
       const signAndBroadcastTx = vi.fn().mockResolvedValue({ code: 0 });
       const sendManifest = vi.fn();
@@ -344,6 +376,7 @@ describe(CreateLease.name, () => {
       selectedProvider?: ApiProviderDetail;
       genNewCertificateIfLocalIsInvalid?: () => Promise<CertificatePem | null>;
       updateSelectedCertificate?: (cert: CertificatePem) => Promise<LocalCert>;
+      isSelectedProviderUnlisted?: boolean;
     }) {
       const providers = [input?.selectedProvider ?? buildProvider(), buildProvider(), buildProvider()];
       const bids = input?.bids ?? [
@@ -375,7 +408,8 @@ describe(CreateLease.name, () => {
         BidGroup,
         walletAddress,
         localCert: input?.localCert,
-        providers,
+        providers: input?.isSelectedProviderUnlisted ? providers.slice(1) : providers,
+        providersByAddress: input?.isSelectedProviderUnlisted ? [providers[0]] : [],
         storedDeployment: {
           manifest: helloWorldManifest,
           manifestVersion: new Uint8Array([1, 2, 3]),
@@ -409,6 +443,7 @@ describe(CreateLease.name, () => {
     localCert?: CertificateContextType["localCert"];
     sendManifest?: () => Promise<any>;
     providers?: ApiProviderDetail[];
+    providersByAddress?: ApiProviderDetail[];
     genNewCertificateIfLocalIsInvalid?: () => Promise<CertificatePem | null>;
     updateSelectedCertificate?: (cert: CertificatePem) => Promise<LocalCert>;
     isTrialWallet?: boolean;
@@ -461,7 +496,13 @@ describe(CreateLease.name, () => {
             } as AppDIContainer["chainApiHttpClient"]),
           publicConsoleApiHttpClient: () =>
             mock<AppDIContainer["publicConsoleApiHttpClient"]>({
-              get: async (url: string) => {
+              get: async (url: string, config?: { params?: { addresses?: string } }) => {
+                if (url.includes("/providers") && config?.params?.addresses) {
+                  const addresses = config.params.addresses.split(",");
+                  return {
+                    data: (input?.providersByAddress ?? []).filter(provider => addresses.includes(provider.owner))
+                  };
+                }
                 if (url.includes("/providers")) {
                   return {
                     data: input?.providers ?? [buildProvider(), buildProvider(), buildProvider()]

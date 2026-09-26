@@ -38,7 +38,7 @@ import { useManagedDeploymentConfirm } from "@src/hooks/useManagedDeploymentConf
 import { useWhen } from "@src/hooks/useWhen";
 import { useBidList } from "@src/queries/useBidQuery";
 import { useDeploymentDetail } from "@src/queries/useDeploymentQuery";
-import { useProviderList } from "@src/queries/useProvidersQuery";
+import { useProviderList, useProvidersByAddress } from "@src/queries/useProvidersQuery";
 import type { SendManifestToProviderOptions } from "@src/services/provider-proxy/provider-proxy.service";
 import type { BidDto } from "@src/types/deployment";
 import { RouteStep } from "@src/types/route-steps.type";
@@ -86,6 +86,7 @@ export const DEPENDENCIES = {
   useCertificate,
   useLocalNotes,
   useProviderList,
+  useProvidersByAddress,
   useBidList,
   useDeploymentDetail,
   useMuiTheme,
@@ -118,7 +119,7 @@ export const CreateLease: React.FunctionComponent<Props> = ({ dseq, dependencies
   const { localCert, setLocalCert, genNewCertificateIfLocalIsInvalid, updateSelectedCertificate } = d.useCertificate();
   const router = d.useRouter();
   const [numberOfRequests, setNumberOfRequests] = useState(0);
-  const { data: providers } = d.useProviderList();
+  const { data: providerList } = d.useProviderList();
   const warningRequestsReached = numberOfRequests > WARNING_NUM_OF_BID_REQUESTS;
   const maxRequestsReached = numberOfRequests > MAX_NUM_OF_BID_REQUESTS;
   const { favoriteProviders } = d.useLocalNotes();
@@ -131,6 +132,13 @@ export const CreateLease: React.FunctionComponent<Props> = ({ dseq, dependencies
     refetchInterval: REFRESH_BIDS_INTERVAL,
     enabled: !maxRequestsReached && !isSendingManifest
   });
+  const unlistedBidders = useMemo(() => {
+    if (!providerList) return [];
+    const listedOwners = new Set(providerList.map(provider => provider.owner));
+    return (bids ?? []).map(bid => bid.provider).filter(owner => !listedOwners.has(owner));
+  }, [providerList, bids]);
+  const { data: unlistedBidderProviders } = d.useProvidersByAddress(unlistedBidders);
+  const providers = useMemo(() => providerList && [...providerList, ...(unlistedBidderProviders ?? [])], [providerList, unlistedBidderProviders]);
   const bidsReceivedTracked = useRef(false);
 
   useEffect(() => {
