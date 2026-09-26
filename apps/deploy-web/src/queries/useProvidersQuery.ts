@@ -1,5 +1,5 @@
 import type { QueryKey, UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 
 import { useServices } from "@src/context/ServicesProvider";
 import { useScopedFetchProviderUrl } from "@src/hooks/useScopedFetchProviderUrl";
@@ -124,19 +124,20 @@ export function useProviderList(options = {}) {
   });
 }
 
-/** Mirrors the api's MAX_ADDRESSES, which refuses a lookup naming more providers than this. */
-export const MAX_PROVIDERS_PER_ADDRESS_LOOKUP = 20;
+function collectProviders(lookups: Array<{ data?: ApiProviderList[] }>): ApiProviderList[] {
+  return lookups.flatMap(lookup => lookup.data ?? []);
+}
 
-/** Unlike the provider list, which keeps one wallet per host, this answers every wallet it is asked about. */
+/** Unlike the provider list, which keeps one wallet per host, this answers every wallet asked about, one lookup each so a new address never re-keys an answered one. */
 export function useProvidersByAddress(addresses: string[]) {
   const { publicConsoleApiHttpClient } = useServices();
-  const lookup = [...new Set(addresses)].sort().slice(0, MAX_PROVIDERS_PER_ADDRESS_LOOKUP).join(",");
-  return useQuery({
-    queryKey: QueryKeys.getProvidersByAddressKey(lookup),
-    queryFn: () =>
-      publicConsoleApiHttpClient.get<ApiProviderList[]>(ApiUrlService.providerList(), { params: { addresses: lookup } }).then(response => response.data),
-    enabled: lookup !== "",
-    placeholderData: keepPreviousData
+  return useQueries({
+    queries: [...new Set(addresses)].map(address => ({
+      queryKey: QueryKeys.getProvidersByAddressKey(address),
+      queryFn: () =>
+        publicConsoleApiHttpClient.get<ApiProviderList[]>(ApiUrlService.providerList(), { params: { addresses: address } }).then(response => response.data)
+    })),
+    combine: collectProviders
   });
 }
 

@@ -137,8 +137,8 @@ export const CreateLease: React.FunctionComponent<Props> = ({ dseq, dependencies
     const listedOwners = new Set(providerList.map(provider => provider.owner));
     return (bids ?? []).map(bid => bid.provider).filter(owner => !listedOwners.has(owner));
   }, [providerList, bids]);
-  const { data: unlistedBidderProviders } = d.useProvidersByAddress(unlistedBidders);
-  const providers = useMemo(() => providerList && [...providerList, ...(unlistedBidderProviders ?? [])], [providerList, unlistedBidderProviders]);
+  const unlistedBidderProviders = d.useProvidersByAddress(unlistedBidders);
+  const providers = useMemo(() => providerList && [...providerList, ...unlistedBidderProviders], [providerList, unlistedBidderProviders]);
   const bidsReceivedTracked = useRef(false);
 
   useEffect(() => {
