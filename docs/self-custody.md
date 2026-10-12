@@ -15,6 +15,7 @@ Console Air uses [Cosmos Kit](https://cosmoskit.com/) to connect to wallets. Out
 - Keplr (browser extension and mobile)
 - Cosmostation
 - MetaMask (via the Cosmos extension snap)
+- Vultisig (browser extension)
 
 Click **Connect Wallet** in the top-right and pick your wallet. Approve the connection in the wallet UI. You're connected.
 
