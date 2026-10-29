@@ -23,6 +23,11 @@ const GpuReportSchema = z.object({
   report: Base64String
 });
 
+export const MAX_GPU_REPORTS = 16;
+
+/** zod 3 parses every element even after `.max()` fails, so oversized arrays are cut to one past the cap first. */
+const capGpuReportsForParsing = (value: unknown) => (Array.isArray(value) ? value.slice(0, MAX_GPU_REPORTS + 1) : value);
+
 export const VerifyAttestationRequestSchema = z.object({
   nonce: z.string().min(1),
   report: Base64String,
@@ -31,7 +36,7 @@ export const VerifyAttestationRequestSchema = z.object({
   // verdict, never a 400 that hides the other reports' verdicts.
   cert_chain: Base64String.optional().default(""),
   auxblob: Base64String.optional().default(""),
-  gpu_reports: z.array(GpuReportSchema).optional().default([])
+  gpu_reports: z.preprocess(capGpuReportsForParsing, z.array(GpuReportSchema).max(MAX_GPU_REPORTS)).optional().default([])
 });
 export type VerifyAttestationRequest = z.infer<typeof VerifyAttestationRequestSchema>;
 

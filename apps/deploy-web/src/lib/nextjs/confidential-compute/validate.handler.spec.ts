@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { mock } from "vitest-mock-extended";
 
 import type { VerifyAttestationResponse } from "./http-schemas/attestation.schema";
+import { MAX_GPU_REPORTS } from "./http-schemas/attestation.schema";
 import type { AttestationService } from "./services/attestation.service";
 import type { DEPENDENCIES } from "./validate.handler";
 import { attestationValidateHandler } from "./validate.handler";
@@ -48,6 +49,37 @@ describe(attestationValidateHandler.name, () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(service.verify).not.toHaveBeenCalled();
+  });
+
+  it("verifies up to the maximum number of GPU reports", async () => {
+    const gpuReports = Array.from({ length: MAX_GPU_REPORTS }, (_, index) => ({ device_index: index, report: "Z3B1" }));
+    const { req, res, service } = setup({ method: "POST", body: { ...validBody, gpu_reports: gpuReports } });
+    service.verify.mockResolvedValue({ overall: "valid", nonce: "bm9uY2U=", reports: [] });
+
+    await run(req, res, service);
+
+    expect(service.verify).toHaveBeenCalledWith(expect.objectContaining({ gpu_reports: gpuReports }));
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it("rejects more GPU reports than the maximum with 400", async () => {
+    const gpuReports = Array.from({ length: MAX_GPU_REPORTS + 1 }, (_, index) => ({ device_index: index, report: "Z3B1" }));
+    const { req, res, service } = setup({ method: "POST", body: { ...validBody, gpu_reports: gpuReports } });
+
+    await run(req, res, service);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(service.verify).not.toHaveBeenCalled();
+  });
+
+  it("reports a bounded number of issues for an oversized array of invalid GPU reports", async () => {
+    const { req, res, service } = setup({ method: "POST", body: { ...validBody, gpu_reports: Array(100_000).fill(0) } });
+
+    await run(req, res, service);
+
+    const { details } = res.json.mock.calls[0][0] as { details: { fieldErrors: { gpu_reports: string[] } } };
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(details.fieldErrors.gpu_reports.length).toBeLessThanOrEqual(MAX_GPU_REPORTS + 2);
   });
 
   it("returns 500 when verification throws unexpectedly", async () => {
