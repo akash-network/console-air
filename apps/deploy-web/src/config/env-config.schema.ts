@@ -32,7 +32,7 @@ export const browserEnvSchema = z.object({
   NEXT_PUBLIC_PROVIDER_PROXY_URL: productionUrl(DEFAULT_PROVIDER_PROXY_URL),
   NEXT_PUBLIC_PROVIDER_PROXY_URL_SANDBOX: optionalProductionUrl(),
   NEXT_PUBLIC_NODE_ENV: z.enum(["development", "production", "test"]).optional().default("development"),
-  NEXT_PUBLIC_DEFAULT_INITIAL_DEPOSIT: z.number({ coerce: true }).optional().default(500000),
+  NEXT_PUBLIC_DEFAULT_INITIAL_DEPOSIT: z.coerce.number().optional().default(500000),
   NEXT_PUBLIC_BASE_API_MAINNET_URL: productionUrl("https://console.akash.network/api-mainnet"),
   NEXT_PUBLIC_BASE_API_TESTNET_URL: productionUrl("https://console.akash.network/api-testnet"),
   NEXT_PUBLIC_BASE_API_SANDBOX_URL: productionUrl("https://console-beta.akash.network/api-sandbox"),
@@ -41,7 +41,7 @@ export const browserEnvSchema = z.object({
 });
 
 export const serverEnvSchema = browserEnvSchema.extend({
-  MAINTENANCE_MODE: coercedBoolean().optional().default("false"),
+  MAINTENANCE_MODE: coercedBoolean().optional().default(false),
   NODE_ENV: z.enum(["development", "production", "test"]).optional().default("development"),
   DEFAULT_REST_API_NODE_URL_MAINNET: z.string().url().optional(),
   DEFAULT_RPC_NODE_URL_MAINNET: z.string().url().optional()

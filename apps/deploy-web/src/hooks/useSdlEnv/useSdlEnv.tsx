@@ -28,7 +28,7 @@ export const useSdlEnv = <T extends ZodObject<ZodRawShape>>({ serviceIndex, sche
       return {};
     }
 
-    return error?.errors?.reduce(
+    return error?.issues?.reduce(
       (acc, error) => {
         acc[error.path.join(".")] = error.message;
         return acc;
@@ -40,7 +40,7 @@ export const useSdlEnv = <T extends ZodObject<ZodRawShape>>({ serviceIndex, sche
   return useMemo(
     () => ({
       values: env,
-      setValue: <K extends keyof z.infer<T>>(key: K, value: z.infer<T>[K]) => {
+      setValue: <K extends keyof z.infer<T>>(key: K, value: z.infer<T>[K] & string) => {
         if (serviceIndex >= 0) {
           const prev = getValues(`services.${serviceIndex}.env`);
           setValue(`services.${serviceIndex}.env`, objectToKvArray({ ...kvArrayToObject(prev || []), [key]: value }));

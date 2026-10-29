@@ -37,8 +37,8 @@ export type DeploymentDepositModalProps = {
 
 const formSchema = z.object({
   amount: z.coerce
-    .number({
-      invalid_type_error: "Amount must be a number."
+    .number<number>({
+      error: "Amount must be a number."
     })
     .min(0.000001, { message: "Amount is required." })
 });

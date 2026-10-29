@@ -23,7 +23,7 @@
     "cockatiel": "3.2.1",
     "date-fns": "4.1.0",
     "lodash": "4.18.1",
-    "zod": "3.*"
+    "zod": "4.*"
   },
   "devDependencies": {
     "@akashnetwork/net": "*",
