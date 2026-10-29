@@ -63,8 +63,9 @@ export const createAppRootContainer = (config: ServicesConfig) => {
       // HTTP requests are proxied through the Next /api/provider-proxy/{network} route
       // so the browser stays same-origin (no CORS preflight). WebSockets bypass that
       // route since Next API routes can't upgrade — they hit the upstream directly.
-      const getHttpBaseUrl = () => (config.runtimeEnv === "browser" ? `/api/provider-proxy/${network()}` : config.BASE_PROVIDER_PROXY_URL.replace("%{NETWORK}", network()));
-      const getWebSocketUrl = () => config.BASE_PROVIDER_PROXY_URL.replace("%{NETWORK}", network()).replace(/^http/, "ws");
+      const getUpstreamUrl = () => container.apiUrlService.getProviderProxyUrlFor(network());
+      const getHttpBaseUrl = () => (config.runtimeEnv === "browser" ? `/api/provider-proxy/${network()}` : getUpstreamUrl());
+      const getWebSocketUrl = () => getUpstreamUrl().replace(/^http/, "ws");
       return new ProviderProxyService(
         container.applyAxiosInterceptors(container.createAxios({ baseURL: "/" }), {
           request: [config => ({ ...config, baseURL: getHttpBaseUrl() })]
@@ -136,7 +137,6 @@ export const createAppRootContainer = (config: ServicesConfig) => {
 
 export interface ServicesConfig {
   BASE_API_MAINNET_URL: string;
-  BASE_PROVIDER_PROXY_URL: string;
   globalRequestMiddleware?: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig;
   runtimeEnv: "nodejs" | "browser";
   apiUrlService: () => ApiUrlService;

@@ -132,7 +132,7 @@ export class ApiUrlService {
     // Console API (/v1/*) requests go through the Next /api/proxy/{network} route
     // so the browser only ever talks to its own origin. The proxy forwards
     // server-side to the per-network upstream derived from NEXT_PUBLIC_API_BASE_URL
-    // (mainnet → console-api.akash.network, sandbox → console-api-sandbox.akash.network).
+    // (mainnet → console-api.akash.network, sandbox → console-api-sandbox-staging.akash.network).
     return `/api/proxy/${networkStore.selectedNetworkId}`;
   }
 }

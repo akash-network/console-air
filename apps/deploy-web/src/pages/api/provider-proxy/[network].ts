@@ -1,9 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { browserEnvConfig } from "@src/config/browser-env.config";
 import { proxyRequest } from "@src/lib/nextjs/proxyRequest/proxyRequest";
+import { ApiUrlService } from "@src/services/api-url/api-url.service";
 
 const ALLOWED_NETWORKS = new Set(["mainnet", "sandbox", "testnet"]);
-const PROVIDER_PROXY_TEMPLATE = "https://console.akash.network/provider-proxy-%{NETWORK}";
+
+const apiUrlService = new ApiUrlService(browserEnvConfig);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const network = String(req.query.network || "");
@@ -13,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const target = PROVIDER_PROXY_TEMPLATE.replace("%{NETWORK}", network) + "/";
+  const target = apiUrlService.getProviderProxyHttpTargetFor(network);
 
   // Incoming request headers are forwarded transparently by proxyRequest, so the
   // upstream sees cf-connecting-ip / x-forwarded-for / traceparent / baggage when

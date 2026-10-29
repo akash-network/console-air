@@ -8,7 +8,7 @@ import { createAppRootContainer } from "./app-di-container";
 // Console API (/v1/*) requests are proxied through Next's /api/proxy/{network}
 // route so the browser only ever talks to its own origin. The proxy forwards
 // server-side to the per-network upstream derived from NEXT_PUBLIC_API_BASE_URL
-// (mainnet → console-api.akash.network, sandbox → console-api-sandbox.akash.network).
+// (mainnet → console-api.akash.network, sandbox → console-api-sandbox-staging.akash.network).
 const rootContainer = createAppRootContainer({
   runtimeEnv: "browser",
   // Used as a fixed mainnet base for http-sdk services constructed at root-container
@@ -16,7 +16,6 @@ const rootContainer = createAppRootContainer({
   // mainnet value here is harmless; the network-aware path is the consoleApiHttpClient
   // interceptor below.
   BASE_API_MAINNET_URL: "/api/proxy/mainnet",
-  BASE_PROVIDER_PROXY_URL: browserEnvConfig.NEXT_PUBLIC_PROVIDER_PROXY_URL,
   apiUrlService: () => new ApiUrlService(browserEnvConfig)
 });
 
