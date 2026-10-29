@@ -1,6 +1,7 @@
 import { type NetworkId, SANDBOX_ID, TESTNET_ID } from "@akashnetwork/chain-sdk/web";
 
 import type { BrowserEnvConfig } from "@src/config/env-config.schema";
+import { DEFAULT_PROVIDER_PROXY_URL, DEFAULT_SANDBOX_PROVIDER_PROXY_URL } from "@src/config/env-config.schema";
 
 type ApiUrlConfig = Pick<
   BrowserEnvConfig,
@@ -40,10 +41,20 @@ export class ApiUrlService {
   }
 
   getProviderProxyUrlFor(network: NetworkId | string): string {
-    if (network === SANDBOX_ID) {
+    if (network === SANDBOX_ID && this.config.NEXT_PUBLIC_PROVIDER_PROXY_URL_SANDBOX) {
       return this.config.NEXT_PUBLIC_PROVIDER_PROXY_URL_SANDBOX;
     }
 
+    if (network === SANDBOX_ID && this.config.NEXT_PUBLIC_PROVIDER_PROXY_URL === DEFAULT_PROVIDER_PROXY_URL) {
+      return DEFAULT_SANDBOX_PROVIDER_PROXY_URL;
+    }
+
     return this.config.NEXT_PUBLIC_PROVIDER_PROXY_URL.replace("%{NETWORK}", network);
+  }
+
+  getProviderProxyHttpTargetFor(network: NetworkId | string): string {
+    const target = new URL(this.getProviderProxyUrlFor(network));
+    target.pathname = target.pathname.replace(/\/?$/, "/");
+    return target.toString();
   }
 }

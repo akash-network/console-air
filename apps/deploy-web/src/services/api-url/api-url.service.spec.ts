@@ -32,6 +32,33 @@ describe(ApiUrlService.name, () => {
       expect(service.getProviderProxyUrlFor("sandbox")).toBe("https://sandbox-proxy.example.com");
       expect(service.getProviderProxyUrlFor("mainnet")).toBe("https://proxy.example.com/mainnet");
     });
+
+    it("follows a customized template for sandbox when no sandbox override is configured", () => {
+      const { service } = setup({ NEXT_PUBLIC_PROVIDER_PROXY_URL: "https://proxy.example.com/%{NETWORK}" });
+
+      expect(service.getProviderProxyUrlFor("sandbox")).toBe("https://proxy.example.com/sandbox");
+    });
+  });
+
+  describe("getProviderProxyHttpTargetFor", () => {
+    it("appends a trailing slash to the provider proxy path", () => {
+      const { service } = setup();
+
+      expect(service.getProviderProxyHttpTargetFor("mainnet")).toBe("https://console.akash.network/provider-proxy-mainnet/");
+      expect(service.getProviderProxyHttpTargetFor("sandbox")).toBe("https://console-beta.akash.network/provider-proxy-sandbox/");
+    });
+
+    it("appends the trailing slash before the query string", () => {
+      const { service } = setup({ NEXT_PUBLIC_PROVIDER_PROXY_URL: "https://proxy.example.com/%{NETWORK}?token=abc" });
+
+      expect(service.getProviderProxyHttpTargetFor("mainnet")).toBe("https://proxy.example.com/mainnet/?token=abc");
+    });
+
+    it("keeps a single trailing slash when the configured url already ends with one", () => {
+      const { service } = setup({ NEXT_PUBLIC_PROVIDER_PROXY_URL_SANDBOX: "https://sandbox-proxy.example.com/proxy/" });
+
+      expect(service.getProviderProxyHttpTargetFor("sandbox")).toBe("https://sandbox-proxy.example.com/proxy/");
+    });
   });
 
   describe("getConsoleApiUrlFor", () => {

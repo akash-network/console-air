@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const target = apiUrlService.getProviderProxyUrlFor(network) + "/";
+  const target = apiUrlService.getProviderProxyHttpTargetFor(network);
 
   // Incoming request headers are forwarded transparently by proxyRequest, so the
   // upstream sees cf-connecting-ip / x-forwarded-for / traceparent / baggage when
