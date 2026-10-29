@@ -21,15 +21,16 @@ export const browserEnvSchema = z.object({
   NEXT_PUBLIC_DEFAULT_NETWORK_ID: networkId.optional().default("mainnet"),
   NEXT_PUBLIC_APP_URL: productionUrl("http://localhost:3000"),
   NEXT_PUBLIC_API_BASE_URL: productionUrl("https://console-api.akash.network"),
-  NEXT_PUBLIC_API_BASE_URL_SANDBOX: productionUrl("https://console-api-sandbox.akash.network"),
+  NEXT_PUBLIC_API_BASE_URL_SANDBOX: productionUrl("https://console-api-sandbox-staging.akash.network"),
   NEXT_PUBLIC_API_BASE_URL_TESTNET: productionUrl("https://console-api-testnet.akash.network"),
   NEXT_PUBLIC_STATS_APP_URL: productionUrl("https://stats.akash.network"),
   NEXT_PUBLIC_PROVIDER_PROXY_URL: productionUrl("https://console.akash.network/provider-proxy-%{NETWORK}"),
+  NEXT_PUBLIC_PROVIDER_PROXY_URL_SANDBOX: productionUrl("https://console-beta.akash.network/provider-proxy-sandbox"),
   NEXT_PUBLIC_NODE_ENV: z.enum(["development", "production", "test"]).optional().default("development"),
   NEXT_PUBLIC_DEFAULT_INITIAL_DEPOSIT: z.number({ coerce: true }).optional().default(500000),
   NEXT_PUBLIC_BASE_API_MAINNET_URL: productionUrl("https://console.akash.network/api-mainnet"),
   NEXT_PUBLIC_BASE_API_TESTNET_URL: productionUrl("https://console.akash.network/api-testnet"),
-  NEXT_PUBLIC_BASE_API_SANDBOX_URL: productionUrl("https://console.akash.network/api-sandbox"),
+  NEXT_PUBLIC_BASE_API_SANDBOX_URL: productionUrl("https://console-beta.akash.network/api-sandbox"),
   NEXT_PUBLIC_BASE_TEMPLATES_URL: productionUrl("https://akash-templates.pages.dev"),
   NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID: z.string().min(1).optional()
 });

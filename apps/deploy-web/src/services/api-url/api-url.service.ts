@@ -10,6 +10,8 @@ type ApiUrlConfig = Pick<
   | "NEXT_PUBLIC_API_BASE_URL"
   | "NEXT_PUBLIC_API_BASE_URL_SANDBOX"
   | "NEXT_PUBLIC_API_BASE_URL_TESTNET"
+  | "NEXT_PUBLIC_PROVIDER_PROXY_URL"
+  | "NEXT_PUBLIC_PROVIDER_PROXY_URL_SANDBOX"
 >;
 
 export class ApiUrlService {
@@ -35,5 +37,13 @@ export class ApiUrlService {
       default:
         return this.config.NEXT_PUBLIC_API_BASE_URL;
     }
+  }
+
+  getProviderProxyUrlFor(network: NetworkId | string): string {
+    if (network === SANDBOX_ID) {
+      return this.config.NEXT_PUBLIC_PROVIDER_PROXY_URL_SANDBOX;
+    }
+
+    return this.config.NEXT_PUBLIC_PROVIDER_PROXY_URL.replace("%{NETWORK}", network);
   }
 }
