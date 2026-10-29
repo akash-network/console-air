@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Alert, Button, Form, Snackbar, Spinner } from "@akashnetwork/ui/components";
-import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import { NavArrowRight } from "iconoir-react";
 import { useAtom } from "jotai";
@@ -18,9 +17,8 @@ import { useSdlServiceManager } from "@src/hooks/useSdlServiceManager/useSdlServ
 import { useGpuModels } from "@src/queries/useGpuQuery";
 import sdlStore from "@src/store/sdlStore";
 import type { ITemplate, SdlBuilderFormValuesType, ServiceType } from "@src/types";
-import { SdlBuilderFormValuesSchema } from "@src/types";
+import { sdlBuilderFormResolver } from "@src/types";
 import { RouteStep } from "@src/types/route-steps.type";
-import { memoryUnits, storageUnits } from "@src/utils/akash/units";
 import { getDefaultService } from "@src/utils/sdl/data";
 import { generateSdl } from "@src/utils/sdl/sdlGenerator";
 import { importSimpleSdl } from "@src/utils/sdl/sdlImport";
@@ -46,7 +44,7 @@ export const SimpleSDLBuilderForm: React.FunctionComponent = () => {
   const { enqueueSnackbar } = useSnackbar();
   const defaultServices = useMemo(() => ({ services: [getDefaultService()] }), []);
   const form = useForm<SdlBuilderFormValuesType>({
-    resolver: zodResolver(SdlBuilderFormValuesSchema),
+    resolver: sdlBuilderFormResolver,
     defaultValues: defaultServices
   });
   const { handleSubmit, reset, control, trigger, watch, setValue } = form;

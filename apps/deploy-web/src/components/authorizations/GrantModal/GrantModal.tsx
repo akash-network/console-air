@@ -48,7 +48,7 @@ type Props = {
 
 const spendLimitSchema = z.object({
   denom: z.string().min(1, "Token is required."),
-  amount: z.coerce.number().gt(0, "Amount must be greater than 0.")
+  amount: z.coerce.number<number>().gt(0, "Amount must be greater than 0.")
 });
 
 const formSchema = z.object({

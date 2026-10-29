@@ -3,13 +3,12 @@ import type { Dispatch } from "react";
 import React, { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Alert, Button, Form, Spinner } from "@akashnetwork/ui/components";
-import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useSdlBuilder } from "@src/context/SdlBuilderProvider/SdlBuilderProvider";
 import { useSdlServiceManager } from "@src/hooks/useSdlServiceManager/useSdlServiceManager";
 import { useGpuModels } from "@src/queries/useGpuQuery";
 import type { SdlBuilderFormValuesType, ServiceType } from "@src/types";
-import { SdlBuilderFormValuesSchema } from "@src/types";
+import { sdlBuilderFormResolver } from "@src/types";
 import { getDefaultService } from "@src/utils/sdl/data";
 import { generateSdl } from "@src/utils/sdl/sdlGenerator";
 import { importSimpleSdl } from "@src/utils/sdl/sdlImport";
@@ -40,7 +39,7 @@ export const SdlBuilder = React.forwardRef<SdlBuilderRefType, Props>(({ sdlStrin
       imageList: imageList,
       hasSSHKey: hasComponent("ssh")
     },
-    resolver: zodResolver(SdlBuilderFormValuesSchema)
+    resolver: sdlBuilderFormResolver
   });
   const { control, trigger, watch, setValue, formState } = form;
   const serviceManager = useSdlServiceManager({ control });

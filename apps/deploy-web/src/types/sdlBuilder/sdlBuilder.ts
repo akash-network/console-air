@@ -1,4 +1,5 @@
-import type { IssueData } from "zod";
+import type { Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { datadogEnvSchema } from "@src/components/sdl/DatadogEnvConfig/DatadogEnvConfig";
@@ -152,21 +153,21 @@ export const CPU_ARCHITECTURES = ["amd64", "arm64"] as const;
 
 export const ProfileSchema = z
   .object({
-    cpu: z.number({ invalid_type_error: "CPU count is required." }).min(0.1, { message: "CPU count is required." }),
+    cpu: z.number({ error: "CPU count is required." }).min(0.1, { message: "CPU count is required." }),
     /** Requested CPU architecture. Undefined writes no `arch` attribute at all, which is what every pre-arm64 deployment has. */
     arch: z.enum(CPU_ARCHITECTURES).optional(),
     hasGpu: z.boolean().optional(),
-    gpu: z.number({ invalid_type_error: "GPU amount is required." }).optional(),
+    gpu: z.number({ error: "GPU amount is required." }).optional(),
     gpuModels: z.array(ProfileGpuModelSchema).optional(),
     ram: z.number().min(1, { message: "RAM is required." }),
     ramUnit: z.string().min(1, { message: "RAM unit is required." }),
     storage: z.array(ServiceStorageSchema).min(1, { message: "Storage is required." })
   })
   .superRefine((data, ctx) => {
-    const customIssues: IssueData[] = [];
+    const customIssues: z.core.$ZodSuperRefineIssue[] = [];
 
     if (data.hasGpu && !data.gpu) {
-      customIssues.push({ code: z.ZodIssueCode.custom, message: "Gpu amount is required.", path: ["gpu"], fatal: true });
+      customIssues.push({ code: z.ZodIssueCode.custom, message: "Gpu amount is required.", path: ["gpu"], continue: false });
     }
 
     if (data.storage.length > 1) {
@@ -179,31 +180,31 @@ export const ProfileSchema = z
         }
 
         if (!storage.size || storage.size < 1) {
-          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage amount is required", path: ["storage", index, "size"], fatal: true });
+          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage amount is required", path: ["storage", index, "size"], continue: false });
         }
 
         if (!storage.unit) {
-          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage unit is required", path: ["storage", index, "unit"], fatal: true });
+          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage unit is required", path: ["storage", index, "unit"], continue: false });
         }
 
         if (!storage.name) {
-          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage name is required", path: ["storage", index, "name"], fatal: true });
+          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage name is required", path: ["storage", index, "name"], continue: false });
         }
 
         if (!storage.type) {
-          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage type is required", path: ["storage", index, "type"], fatal: true });
+          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage type is required", path: ["storage", index, "type"], continue: false });
         }
 
         if (!storage.mount) {
-          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage mount is required", path: ["storage", index, "mount"], fatal: true });
+          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage mount is required", path: ["storage", index, "mount"], continue: false });
         }
 
         if (names.slice(0, index).includes(storage.name)) {
-          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage name must be unique", path: ["storage", index, "name"], fatal: true });
+          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage name must be unique", path: ["storage", index, "name"], continue: false });
         }
 
         if (mounts.slice(0, index).includes(storage.mount)) {
-          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage mount must be unique", path: ["storage", index, "mount"], fatal: true });
+          customIssues.push({ code: z.ZodIssueCode.custom, message: "Storage mount must be unique", path: ["storage", index, "mount"], continue: false });
         }
       });
     }
@@ -511,6 +512,9 @@ export const SdlBuilderFormValuesSchema = z
 
 export type ServiceType = z.infer<typeof ServiceSchema>;
 export type SdlBuilderFormValuesType = z.infer<typeof SdlBuilderFormValuesSchema>;
+
+/** Form state always holds complete services, so the schema's looser input type (defaulted fields are optional) never reaches it. */
+export const sdlBuilderFormResolver = zodResolver(SdlBuilderFormValuesSchema) as Resolver<SdlBuilderFormValuesType>;
 export type ProfileGpuModelType = z.infer<typeof ProfileGpuModelSchema>;
 export type CpuArchType = (typeof CPU_ARCHITECTURES)[number];
 export type EnvironmentVariableType = z.infer<typeof EnvironmentVariableSchema>;

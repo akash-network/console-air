@@ -24,7 +24,7 @@ type Props = {
 };
 
 const formSchema = z.object({
-  amount: z.coerce.number().min(0, {
+  amount: z.coerce.number<number>().min(0, {
     message: "Amount must be greater than 0."
   }),
   expiration: z.string().min(1, "Expiration is required."),
